@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <Authors>Oscar Koo</Authors>
+    <Copyright>Copyright 2023 Oscar Koo</Copyright>
+    <PackageLicenseUrl>https://github.com/OscarKoo/LightFramework/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/OscarKoo/LightFramework</PackageProjectUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/OscarKoo/LightFramework/master/favicon.ico</PackageIconUrl>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+    <ItemGroup>
+        <Folder Include="Common\Exceptions\" />
+        <Folder Include="Domain\Utilities\" />
+        <Folder Include="EntityFrameworkCore\Utilities\" />
+        <Folder Include="HttpApi\Controllers\" />
+        <Folder Include="Domain\Entities\" />
+        <Folder Include="Common\Attributes\" />
+        <Folder Include="HttpApi\Configurations\" />
+        <Folder Include="EntityFrameworkCore\EntityConfigurations\" />
+        <Folder Include="EntityFrameworkCore\DataProviders\" />
+        <Folder Include="Application\" />
+        <Folder Include="HttpApi\Filters\" />
+        <Folder Include="HttpApi\Utilities\" />
+    </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dao.IndividualLock" Version="3.1.1" />
+    <PackageReference Include="EFCore.AutomaticMigrations" Version="7.0.10" />
+    <PackageReference Include="linq2db.EntityFrameworkCore" Version="7.5.0" />
+    <PackageReference Include="Mapster" Version="7.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="7.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+    <PackageReference Include="NewId" Version="4.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="OpenIddict.Abstractions" Version="4.7.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="7.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.5.0" />
+    <PackageReference Include="Z.EntityFramework.Plus.EFCore" Version="7.22.6" />
+  </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+</Project>

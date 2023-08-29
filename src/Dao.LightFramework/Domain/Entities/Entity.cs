@@ -1,0 +1,87 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+using Dao.LightFramework.Common.Attributes;
+using Dao.LightFramework.Common.Utilities;
+
+namespace Dao.LightFramework.Domain.Entities;
+
+#region Entity
+
+public abstract class Entity : IId
+{
+    public string Id { get; set; }
+
+    [NotMapped, JsonIgnore, Newtonsoft.Json.JsonIgnore, SwaggerIgnore]
+    public bool IsNew => string.IsNullOrWhiteSpace(Id) || (this is IRowVersion rw && rw.RowVersion.IsNullOrEmpty());
+
+    [NotMapped, JsonIgnore, Newtonsoft.Json.JsonIgnore, SwaggerIgnore]
+    public bool IgnoreRowVersionCheck { get; set; }
+
+    #region CacheKeys
+
+    [NotMapped, JsonIgnore, Newtonsoft.Json.JsonIgnore, SwaggerIgnore]
+    public virtual string[] CacheKeys => null;
+
+    public static string CacheKey<T>(params string[] keys) => $"{typeof(T).Name}_{string.Join("_", keys)}";
+
+    protected static string[] CacheKeyArray<T>(params string[] keys)
+    {
+        var type = typeof(T).Name;
+        return string.Empty.ToEnumerable().Concat(keys).Select(key => CacheKeyJoin(type, key)).Distinct().ToArray();
+    }
+
+    protected static string CacheKeyJoin(params string[] parts) => string.Join("_", parts);
+
+    #endregion
+}
+
+public class EntityRowVersion : Entity, IRowVersion
+{
+    public byte[] RowVersion { get; set; }
+}
+
+public abstract class EntityMutable : Entity, IMutable
+{
+    public string CreateUser { get; set; }
+    public DateTime? CreateTime { get; set; }
+    public string UpdateUser { get; set; }
+    public DateTime? UpdateTime { get; set; }
+}
+
+public abstract class EntityDomainSite : Entity, IDomainSite
+{
+    public string Domain { get; set; }
+    public string Site { get; set; }
+}
+
+public abstract class EntityMutableDomainSite : EntityMutable, IDomainSite
+{
+    public string Domain { get; set; }
+    public string Site { get; set; }
+}
+
+#endregion
+
+#region EntityRowVersion
+
+public abstract class EntityRowVersionMutable : EntityRowVersion, IMutable
+{
+    public string CreateUser { get; set; }
+    public DateTime? CreateTime { get; set; }
+    public string UpdateUser { get; set; }
+    public DateTime? UpdateTime { get; set; }
+}
+
+public abstract class EntityRowVersionDomainSite : EntityRowVersion, IDomainSite
+{
+    public string Domain { get; set; }
+    public string Site { get; set; }
+}
+
+public abstract class EntityRowVersionMutableDomainSite : EntityRowVersionMutable, IDomainSite
+{
+    public string Domain { get; set; }
+    public string Site { get; set; }
+}
+
+#endregion
