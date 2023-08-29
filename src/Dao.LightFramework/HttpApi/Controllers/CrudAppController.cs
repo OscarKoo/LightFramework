@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Dao.LightFramework.HttpApi.Controllers;
 
-[ApiController]
 public abstract class CrudAppController<TIAppService, TEntity, TDto> : AppController<TIAppService>
     where TIAppService : IAppService, ICrudAppService<TEntity, TDto>
     where TEntity : Entity, new()

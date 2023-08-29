@@ -9,6 +9,8 @@ using LinqToDB.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Z.EntityFramework.Plus;
 
 namespace Dao.LightFramework.HttpApi.Configurations;
@@ -24,6 +26,7 @@ public static class DependencyInjectionConfig
         services.AddLightRepository(assemblies);
         services.AddLightAppService(assemblies);
         services.AddLightMapster(assemblies);
+        services.AddLightBackgroundService(assemblies);
 
         return assemblies;
     }
@@ -51,7 +54,7 @@ public static class DependencyInjectionConfig
         return AppDomain.CurrentDomain.GetAssemblies().Where(w => w.FullName.IsMatchedAssembly(matchedAssembly));
     }
 
-    public static void RegisterAll(this IServiceCollection services, Type source, ICollection<Assembly> assemblies, bool excludeSelf)
+    public static void RegisterAll(this IServiceCollection services, Type source, ICollection<Assembly> assemblies, bool excludeSelf, Action<Type, Type> action = null)
     {
         foreach (var iReg in assemblies.SelectMany(s => source.FindImplementations(source.IsInterface, s)).Where(w => !excludeSelf || w != source))
         {
@@ -61,8 +64,16 @@ public static class DependencyInjectionConfig
                 {
                     if (iReg.IsGenericType == imp.IsGenericType)
                     {
-                        Debug.WriteLine($"====== Register [{iReg.Name}] for [{imp.Name}] ======");
-                        services.AddScoped(iReg, imp);
+                        if (action == null)
+                        {
+                            Debug.WriteLine($"====== Register [{iReg.Name}] for [{imp.Name}] ======");
+                            services.AddScoped(iReg, imp);
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"====== Find [{iReg.Name}] & [{imp.Name}] for custom action ======");
+                            action(iReg, imp);
+                        }
                     }
                 }
             }
@@ -130,6 +141,12 @@ public static class DependencyInjectionConfig
     public static IServiceCollection AddLightAppService(this IServiceCollection services, ICollection<Assembly> assemblies)
     {
         services.RegisterAll(typeof(IAppService), assemblies, true);
+        return services;
+    }
+
+    public static IServiceCollection AddLightBackgroundService(this IServiceCollection services, ICollection<Assembly> assemblies)
+    {
+        services.RegisterAll(typeof(BackgroundService), assemblies, true, (_, imp) => services.TryAddEnumerable(ServiceDescriptor.Describe(typeof(IHostedService), imp, ServiceLifetime.Singleton)));
         return services;
     }
 }

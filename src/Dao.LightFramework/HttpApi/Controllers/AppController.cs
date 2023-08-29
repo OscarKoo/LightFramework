@@ -1,12 +1,13 @@
 ﻿using Dao.LightFramework.Application;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dao.LightFramework.HttpApi.Controllers;
 
+[Authorize]
 [ApiController]
 public abstract class AppController : ControllerBase { }
 
-[ApiController]
 public abstract class AppController<TIAppService> : AppController where TIAppService : IAppService
 {
     protected TIAppService appService;
