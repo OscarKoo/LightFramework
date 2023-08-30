@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Reflection;
+﻿using System.Reflection;
 using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Domain.Entities;
 using Dao.LightFramework.Domain.Utilities;
@@ -8,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Z.EntityFramework.Plus;
+#if DEBUG
+using System.Diagnostics;
+#endif
 
 namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 

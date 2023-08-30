@@ -16,7 +16,7 @@ public class SwaggerIgnoreFilter : ISchemaFilter
         if (schema == null || context == null)
             return;
 
-        Debug.WriteLine($"======== Apply: {context.MemberInfo?.Name}: {context.Type.Name}");
+        Trace.WriteLine($"======== Apply: {context.MemberInfo?.Name}: {context.Type.Name}");
 
         if (context.Type == typeof(TimeSpan))
         {

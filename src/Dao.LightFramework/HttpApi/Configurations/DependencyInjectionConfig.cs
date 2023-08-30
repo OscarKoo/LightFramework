@@ -17,12 +17,15 @@ namespace Dao.LightFramework.HttpApi.Configurations;
 
 public static class DependencyInjectionConfig
 {
-    public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services, IConfiguration configuration, Func<string, bool> matchedAssembly, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly = null)
+    public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services, IConfiguration configuration,
+        Func<string, bool> matchedAssembly,
+        Func<IConfiguration, string> getConnectionString, Assembly dbAssembly)
     {
         services.AddLightServiceContext();
-        services.AddLightDbContext(configuration, getConnectionString, dbAssembly);
 
-        var assemblies = services.LoadAllAssemblies(matchedAssembly).ToList();
+        var assemblies = LoadAllAssemblies(matchedAssembly).ToList();
+
+        services.AddLightDbContext(configuration, getConnectionString, dbAssembly);
         services.AddLightRepository(assemblies);
         services.AddLightAppService(assemblies);
         services.AddLightMapster(assemblies);
@@ -31,9 +34,10 @@ public static class DependencyInjectionConfig
         return assemblies;
     }
 
-    static bool IsMatchedAssembly(this string name, Func<string, bool> matchedAssembly) => name != null && (matchedAssembly(name) || name.StartsWith("Dao.LightFramework", StringComparison.OrdinalIgnoreCase));
+    static bool IsMatchedAssembly(this string name, Func<string, bool> matchedAssembly) =>
+        name != null && (matchedAssembly == null || matchedAssembly(name) || name.StartsWith("Dao.LightFramework", StringComparison.OrdinalIgnoreCase));
 
-    public static IEnumerable<Assembly> LoadAllAssemblies(this IServiceCollection services, Func<string, bool> matchedAssembly)
+    public static IEnumerable<Assembly> LoadAllAssemblies(Func<string, bool> matchedAssembly)
     {
         foreach (var file in Directory.EnumerateFiles(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "*.dll")
             .Where(w => Path.GetFileName(w).IsMatchedAssembly(matchedAssembly))
@@ -43,7 +47,7 @@ public static class DependencyInjectionConfig
             {
                 var name = AssemblyName.GetAssemblyName(file);
                 AppDomain.CurrentDomain.Load(name);
-                Debug.WriteLine($"====== Load Assembly [{name.Name}] ======");
+                Trace.WriteLine($"====== Load Assembly [{name.Name}] ======");
             }
             catch (Exception e)
             {
@@ -66,12 +70,12 @@ public static class DependencyInjectionConfig
                     {
                         if (action == null)
                         {
-                            Debug.WriteLine($"====== Register [{iReg.Name}] for [{imp.Name}] ======");
+                            Trace.WriteLine($"====== Register [{iReg.Name}] for [{imp.Name}] ======");
                             services.AddScoped(iReg, imp);
                         }
                         else
                         {
-                            Debug.WriteLine($"====== Find [{iReg.Name}] & [{imp.Name}] for custom action ======");
+                            Trace.WriteLine($"====== Find [{iReg.Name}] & [{imp.Name}] for custom action ======");
                             action(iReg, imp);
                         }
                     }
@@ -110,6 +114,9 @@ public static class DependencyInjectionConfig
 
     public static IServiceCollection AddLightDbContext(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly = null)
     {
+        if (getConnectionString == null)
+            return services;
+
         var connectionString = getConnectionString(configuration);
         EFContext.ConnectionString = connectionString;
         EFContext.ConfigAssembly = dbAssembly;

@@ -39,7 +39,7 @@ public static class MapsterConfig
                     return g.IsGenericType && g.GetGenericTypeDefinition() == type;
                 }).Select(attr => (DtoOfAttribute)attr))
             {
-                Debug.WriteLine($"====== Map Dto [{dtoType.Name}] to Entity [{attr.EntityType.Name}] ======");
+                Trace.WriteLine($"====== Map Dto [{dtoType.Name}] to Entity [{attr.EntityType.Name}] ======");
                 var setter = TypeAdapterConfig.GlobalSettings.NewConfig(dtoType, attr.EntityType).IgnoreNullValues(true).IgnoreMutable(attr.EntityType).IgnoreDomainSite(attr.EntityType); //.IgnoreLocked(entityType);
                 if (!attr.IgnoreProperties.IsNullOrEmpty())
                     setter.Ignore(attr.IgnoreProperties);
@@ -47,7 +47,7 @@ public static class MapsterConfig
                 if (typeof(IRowVersion).IsAssignableFrom(dtoType) && typeof(IRowVersion).IsAssignableFrom(attr.EntityType) && !attr.IgnoreProperties.Contains(nameof(IRowVersion.RowVersion), StringComparer.Ordinal))
                     setter.Settings.BeforeMappingFactories.Add(BeforeMapping(checkRowVersion));
 
-                Debug.WriteLine($"====== Map Entity [{attr.EntityType.Name}] to Dto [{dtoType.Name}] ======");
+                Trace.WriteLine($"====== Map Entity [{attr.EntityType.Name}] to Dto [{dtoType.Name}] ======");
                 setter = TypeAdapterConfig.GlobalSettings.NewConfig(attr.EntityType, dtoType).IgnoreNullValues(true);
                 if (!attr.IgnoreProperties.IsNullOrEmpty())
                     setter.Ignore(attr.IgnoreProperties);
@@ -56,7 +56,7 @@ public static class MapsterConfig
 
         foreach (var entity in assemblies.SelectMany(s => typeof(Entity).FindImplementations(false, s)).Where(w => w.BaseType is { IsAbstract: true }))
         {
-            Debug.WriteLine($"====== Map Entity [{entity.Name}] to Entity [{entity.Name}] ======");
+            Trace.WriteLine($"====== Map Entity [{entity.Name}] to Entity [{entity.Name}] ======");
             var setter = TypeAdapterConfig.GlobalSettings.NewConfig(entity, entity).IgnoreNullValues(true);
 
             if (typeof(IRowVersion).IsAssignableFrom(entity))

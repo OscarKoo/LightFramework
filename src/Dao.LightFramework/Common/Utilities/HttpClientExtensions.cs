@@ -57,7 +57,7 @@ public static class HttpClientExtensions
         catch (Exception ex)
         {
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"request \"{client.BaseAddress?.ToString().JoinUri(query)}\" failed, response: {result}", (int)response?.StatusCode, ex.GetBaseException());
+            throw new BadHttpRequestException($"request \"{client.BaseAddress?.ToString().JoinUri(query)}\" failed, response: {result}", (int?)response?.StatusCode ?? 0, ex.GetBaseException());
         }
         finally
         {

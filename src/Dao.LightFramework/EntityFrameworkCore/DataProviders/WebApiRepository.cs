@@ -14,7 +14,7 @@ public abstract class WebApiRepository<TDto> : ServiceContextServiceBase, IWebAp
         this.httpClientFactory = _<IHttpClientFactory>();
         if (!string.IsNullOrWhiteSpace(microSvcName))
         {
-            this.host = _<IConsul>().FindService(microSvcName).GetAwaiter().GetResult();
+            this.host = _<IServiceDiscovery>().FindService(microSvcName).GetAwaiter().GetResult();
             if (string.IsNullOrWhiteSpace(this.host))
                 throw new Exception($"Unable to connect to micro service \"{ServiceName}\"");
         }
