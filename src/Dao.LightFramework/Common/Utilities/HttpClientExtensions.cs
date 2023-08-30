@@ -63,7 +63,11 @@ public static class HttpClientExtensions
         {
             sb.AppendLine($"Result: {result ?? error}");
             sb.AppendLine($"Response: Cost {sw.Stop()}");
-            StaticLogger.LogInformation(sb.ToString());
+
+            if (string.IsNullOrWhiteSpace(error))
+                StaticLogger.LogInformation(sb.ToString());
+            else
+                StaticLogger.LogError(sb.ToString());
         }
     }
 
