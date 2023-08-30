@@ -12,6 +12,6 @@ public static class LogExtensions
         logger.LogDebug(messageFunc());
     }
 
-    public static T RunAs<T>(this ILogger logger, Func<T> createFunc, LogLevel level = LogLevel.Debug) =>
-        logger == null || createFunc == null || !logger.IsEnabled(level) ? default : createFunc();
+    public static T ExecIf<T>(this ILogger logger, LogLevel level, Func<T> execFunc) =>
+        logger == null || execFunc == null || !logger.IsEnabled(level) ? default : execFunc();
 }
