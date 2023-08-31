@@ -11,12 +11,9 @@ public class RequestMiddleware
 
     public async Task InvokeAsync(HttpContext httpContext)
     {
-        if (ReadRequestBodyAttribute.Enabled)
-        {
-            var readBody = httpContext.GetEndpoint()?.Metadata.GetMetadata<ReadRequestBodyAttribute>();
-            if (readBody != null)
-                httpContext.Request.EnableBuffering();
-        }
+        var readBody = httpContext.GetEndpoint()?.Metadata.GetMetadata<ReadRequestBodyAttribute>();
+        if (readBody != null)
+            httpContext.Request.EnableBuffering();
 
         await this.next(httpContext);
     }
