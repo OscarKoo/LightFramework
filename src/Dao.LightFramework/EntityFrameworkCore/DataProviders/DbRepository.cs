@@ -54,10 +54,10 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
                 entity.Id = NewId.NextSequentialGuid().ToString();
             DbSet.Add(entity);
         }
-        else
-        {
-            DbSet.Update(entity);
-        }
+        //else
+        //{
+        //    DbSet.Update(entity);
+        //}
 
         await SaveChangesAsync(autoSave);
         return entity;
@@ -74,11 +74,11 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
                 s.Id = NewId.NextSequentialGuid().ToString();
             return s;
         }).ToList();
-        var update = entities.Where(w => !w.IsNew).ToList();
+        //var update = entities.Where(w => !w.IsNew).ToList();
         if (insert.Count > 0)
             DbSet.AddRange(insert);
-        if (update.Count > 0)
-            DbSet.AddRange(update);
+        //if (update.Count > 0)
+        //    DbSet.UpdateRange(update);
 
         await SaveChangesAsync(autoSave);
         return entities;
@@ -129,18 +129,18 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
 
     #region Dto
 
-    public async Task<TEntity> RetrieveAsync<TDto>(string id, TDto dto, bool ignoreNullValue = true, params string[] cacheKeys)
+    public async Task<TEntity> RetrieveAsync<TDto>(string id, TDto dto, bool ignoreNullValue = true)
     {
         TEntity entity = null;
         if (!string.IsNullOrWhiteSpace(id))
-            entity = await GetAsync(id, cacheKeys: cacheKeys);
+            entity = await GetAsync(id);
         entity ??= new TEntity();
         return dto.Adapt(entity, ignoreNullValue);
     }
 
     public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, TEntity entity = null, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId
     {
-        entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue, cacheKeys);
+        entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         var tracker = new EntityDtoTracker();
         tracker.Add(entity, dto);
         if (!autoSave) this.dbContext.EntityDtoTracker.Add(entity, dto);
@@ -154,7 +154,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         var tracker = new EntityDtoTracker();
         var entities = await dtos.SelectAsync(async dto =>
         {
-            var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue, cacheKeys);
+            var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue);
             tracker.Add(entity, dto);
             if (!autoSave) this.dbContext.EntityDtoTracker.Add(entity, dto);
             return entity;
@@ -169,7 +169,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         if (dto == null)
             return 0;
 
-        entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue, cacheKeys);
+        entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         return await DeleteAsync(entity, autoSave);
     }
 
@@ -178,7 +178,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         if (dtos.IsNullOrEmpty())
             return 0;
 
-        var entities = await dtos.SelectAsync(async dto => await RetrieveAsync(dto.Id, dto, ignoreNullValue, cacheKeys));
+        var entities = await dtos.SelectAsync(async dto => await RetrieveAsync(dto.Id, dto, ignoreNullValue));
         return await DeleteManyAsync(entities, autoSave);
     }
 

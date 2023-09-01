@@ -27,7 +27,7 @@ public interface IDbRepository<TEntity> : IRepository
 
     #region Dto
 
-    Task<TEntity> RetrieveAsync<TDto>(string id, TDto dto, bool ignoreNullValue = true, params string[] cacheKeys);
+    Task<TEntity> RetrieveAsync<TDto>(string id, TDto dto, bool ignoreNullValue = true);
     Task<TEntity> SaveDtoAsync<TDto>(TDto dto, TEntity entity = null, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId;
     Task<ICollection<TDto>> SaveManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId;
     Task<int> DeleteDtoAsync<TDto>(TDto dto, TEntity entity = null, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId;

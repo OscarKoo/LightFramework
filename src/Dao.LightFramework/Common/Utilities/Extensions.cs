@@ -267,8 +267,8 @@ public static class Extensions
             ? defaultValue
             : result;
 
-    public static string ToDateString(this DateTime? source) => source?.ToDateString();
     public static string ToDateString(this DateTime source) => source.ToString("yyyy-MM-dd");
+    public static DateTime ToSqlDateTime(this DateTime source) => new(source.Ticks - source.Ticks % 10000, source.Kind);
 
     #endregion
 }
