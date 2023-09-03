@@ -8,7 +8,6 @@ using Dao.LightFramework.EntityFrameworkCore.Utilities;
 using Dao.LightFramework.Services;
 using LinqToDB;
 using LinqToDB.Linq;
-using MassTransit;
 
 namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
@@ -51,7 +50,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         if (entity.IsNew)
         {
             if (string.IsNullOrWhiteSpace(entity.Id))
-                entity.Id = NewId.NextSequentialGuid().ToString();
+                entity.Id = NextSequentialGuid();
             DbSet.Add(entity);
         }
         //else
@@ -71,7 +70,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         var insert = entities.Where(w => w.IsNew).Select(s =>
         {
             if (string.IsNullOrWhiteSpace(s.Id))
-                s.Id = NewId.NextSequentialGuid().ToString();
+                s.Id = NextSequentialGuid();
             return s;
         }).ToList();
         //var update = entities.Where(w => !w.IsNew).ToList();
