@@ -15,7 +15,9 @@ public interface IDbRepository<TEntity> : IRepository
 
     Task<TEntity> GetAsync(string id, bool asNoTracking = false, params string[] cacheKeys);
     Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys);
+    Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys);
     Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys);
+    Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys);
 
     Task<TEntity> SaveAsync(TEntity entity, bool autoSave = false);
     Task<ICollection<TEntity>> SaveManyAsync(ICollection<TEntity> entities, bool autoSave = false);

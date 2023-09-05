@@ -21,7 +21,7 @@ public static class HttpClientExtensions
             : null;
 
         var sb = new StringBuilder();
-        sb.AppendLine($"MicroService: {client.BaseAddress?.Scheme}://{client.BaseAddress?.Authority}/{uri?.OriginalString}");
+        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {client.BaseAddress?.Scheme}://{client.BaseAddress?.Authority}/{uri?.OriginalString}");
 
         var request = new HttpRequestMessage(method, uri);
         if (method != HttpMethod.Get && body != null)

@@ -40,10 +40,30 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         string.IsNullOrWhiteSpace(id) ? default : await GetAsync(w => w.Id == id, asNoTracking, cacheKeys);
 
     public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
-        await DbQuery(asNoTracking).Where(where).FirstOrDefaultFromCacheAsync(asNoTracking, cacheKeys);
+        await GetAsync(where, null, asNoTracking, cacheKeys);
+
+    public Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys)
+    {
+        var query = DbQuery(asNoTracking);
+        if (where != null)
+            query = query.Where(where);
+        if (orderBy != null)
+            query = orderBy(query);
+        return query.FirstOrDefaultFromCacheAsync(asNoTracking, cacheKeys);
+    }
 
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
-        await DbQuery(asNoTracking).Where(where).ToListFromCacheAsync(asNoTracking, cacheKeys);
+        await GetListAsync(where, null, asNoTracking, cacheKeys);
+
+    public Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys)
+    {
+        var query = DbQuery(asNoTracking);
+        if (where != null)
+            query = query.Where(where);
+        if (orderBy != null)
+            query = orderBy(query);
+        return query.ToListFromCacheAsync(asNoTracking, cacheKeys);
+    }
 
     public async Task<TEntity> SaveAsync(TEntity entity, bool autoSave = false)
     {
@@ -119,7 +139,10 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
 
     public async Task<int> DeleteAsync(Expression<Func<TEntity, bool>> where, bool autoSave = false)
     {
-        var list = await DbQuery().Where(where).ToListAsync();
+        var query = DbQuery();
+        if (where != null)
+            query = query.Where(where);
+        var list = await query.ToListAsync();
         await DeleteManyAsync(list, autoSave);
         return list.Count;
     }
