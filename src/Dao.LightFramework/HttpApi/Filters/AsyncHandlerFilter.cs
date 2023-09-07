@@ -1,12 +1,19 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
+using Dao.LightFramework.Common.Attributes;
 using Dao.LightFramework.Common.Utilities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Dao.LightFramework.HttpApi.Filters;
 
 public class AsyncHandlerFilter : IAsyncActionFilter
 {
+    readonly IServiceProvider serviceProvider;
+
+    public AsyncHandlerFilter(IServiceProvider serviceProvider) => this.serviceProvider = serviceProvider;
+
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var sb = new StringBuilder();
@@ -15,13 +22,46 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             var request = context.HttpContext.Request;
             sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
+
+            var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;
+            var filters = new List<FilterState>();
             var sw = new StopWatch();
+            if (controllerAction != null)
+            {
+                sw.Start();
+                filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo));
+                filters.AddRange(GetFilterStates(controllerAction.MethodInfo));
+
+                foreach (var filter in filters)
+                {
+                    filter.State = await filter.Filter.OnActionExecutingAsync(context, this.serviceProvider);
+                    if (context.Result != null)
+                        return;
+                }
+
+                sw.Stop();
+            }
+
             sw.Start();
             var result = await next();
             var end = sw.Stop();
+            var exec = sw.LastStopNS;
+
             if (result.Result is ObjectResult obj)
                 sb.AppendLine($"Result: {obj.Value.ToJson()}");
             sb.AppendLine($"Response: Cost {end}");
+
+            if (controllerAction != null)
+            {
+                sw.Start();
+                foreach (var filter in ((IList<FilterState>)filters).Reverse())
+                {
+                    await filter.Filter.OnActionExecutedAsync(context, this.serviceProvider, result, filter.State);
+                }
+
+                sw.Stop();
+                sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - exec)}");
+            }
         }
         finally
         {
@@ -29,4 +69,18 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 StaticLogger.LogInformation(sb.ToString());
         }
     }
+
+    static IEnumerable<FilterState> GetFilterStates(MemberInfo element)
+    {
+        var type = typeof(IActionFilterAttribute);
+        return element.CustomAttributes.Where(w => type.IsAssignableFrom(w.AttributeType)).Select(s => new FilterState((IActionFilterAttribute)element.GetCustomAttribute(s.AttributeType)));
+    }
+}
+
+sealed class FilterState
+{
+    internal FilterState(IActionFilterAttribute filter) => Filter = filter;
+
+    internal IActionFilterAttribute Filter { get; set; }
+    internal object State { get; set; }
 }

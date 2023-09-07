@@ -17,15 +17,17 @@ namespace Dao.LightFramework.HttpApi.Configurations;
 
 public static class DependencyInjectionConfig
 {
-    public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services, IConfiguration configuration,
-        Func<string, bool> matchedAssembly,
-        Func<IConfiguration, string> getConnectionString, Assembly dbAssembly)
+    public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services,
+        bool useDefaultServiceContext,
+        IConfiguration configuration, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly,
+        Func<string, bool> matchedAssembly)
     {
-        services.AddLightServiceContext();
-
-        var assemblies = LoadAllAssemblies(matchedAssembly).ToList();
+        if (useDefaultServiceContext)
+            services.AddLightServiceContext();
 
         services.AddLightDbContext(configuration, getConnectionString, dbAssembly);
+
+        var assemblies = LoadAllAssemblies(matchedAssembly).ToList();
         services.AddLightRepository(assemblies);
         services.AddLightAppService(assemblies);
         services.AddLightMapster(assemblies);
@@ -109,6 +111,7 @@ public static class DependencyInjectionConfig
     {
         services.AddScoped<IRequestContext, RequestContext>();
         services.AddScoped<IMultilingual, Multilingual>();
+        _ = new Multilingual(null);
         return services;
     }
 

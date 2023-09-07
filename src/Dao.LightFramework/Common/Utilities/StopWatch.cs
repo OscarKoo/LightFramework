@@ -6,7 +6,9 @@ public class StopWatch
 {
     readonly Stopwatch sw = new();
     readonly uint attention;
-    double total;
+
+    public double LastStopNS { get; private set; }
+    public double TotalNS { get; private set; }
 
     public StopWatch(uint attention = 1000) => this.attention = attention;
 
@@ -15,14 +17,14 @@ public class StopWatch
     public string Stop()
     {
         this.sw.Stop();
-        var ns = 1000000000 * (double)this.sw.ElapsedTicks / Stopwatch.Frequency;
-        this.total += ns;
-        return Format(ns);
+        LastStopNS = 1000000000 * (double)this.sw.ElapsedTicks / Stopwatch.Frequency;
+        TotalNS += LastStopNS;
+        return Format(LastStopNS);
     }
 
-    public string Total => Format(this.total);
+    public string Total => Format(TotalNS);
 
-    string Format(double elapsed)
+    public string Format(double elapsed)
     {
         var ms = Math.Round(elapsed / 1000000, 1);
         return $"{(ms > this.attention ? "[ATTENTION] " : "")}{ms} ms, {Math.Round(elapsed / 1000, 1)} us, {Math.Round(elapsed, 1)} ns";

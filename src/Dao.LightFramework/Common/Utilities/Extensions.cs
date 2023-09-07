@@ -53,6 +53,17 @@ public static class Extensions
     public static IEnumerable<IGrouping<string, TSource>> GroupByIgnoreCase<TSource>(this IEnumerable<TSource> source, Func<TSource, string> keySelector) =>
         source.GroupBy(keySelector, StringComparer.OrdinalIgnoreCase);
 
+    public static IEnumerable<T> Reverse<T>(this IList<T> source)
+    {
+        if (source.IsNullOrEmpty())
+            yield break;
+
+        for (var i = source.Count - 1; i >= 0; i--)
+        {
+            yield return source[i];
+        }
+    }
+
     #endregion
 
     #region Dictionary
@@ -203,7 +214,7 @@ public static class Extensions
 
     public static string JoinUri(this string uri, params string[] parts) => (uri ?? string.Empty).ToEnumerable().Concat(parts).JoinUri();
 
-    public static string JoinUri(this IEnumerable<string> uris) => string.Join("/", uris.Where(w => !string.IsNullOrWhiteSpace(w)).Select(s => s.Trim('/')));
+    public static string JoinUri(this IEnumerable<string> uris) => string.Join("/", uris.Select(s => s?.Trim('/', ' ')).Where(w => !string.IsNullOrWhiteSpace(w)));
 
     public static string ToSafeSql(this string source)
     {

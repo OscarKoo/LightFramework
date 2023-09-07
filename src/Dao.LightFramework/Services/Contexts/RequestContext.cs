@@ -28,7 +28,7 @@ public class RequestContext : IRequestContext
         if (claims.Identity?.IsAuthenticated ?? false)
         {
             UserId = claims.GetClaim("sub") ?? string.Empty;
-            User = claims.GetClaim("username") ?? claims.GetClaim("client_id") ?? string.Empty;
+            User = claims.GetClaim("username") ?? claims.GetClaim("name") ?? string.Empty;
         }
 
         var request = context.Request;
