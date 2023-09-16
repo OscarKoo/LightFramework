@@ -25,45 +25,74 @@ public class EFContext : DbContext
 
     #endregion
 
-    public static volatile string ConnectionString;
+    //public static volatile string ConnectionString;
     public static volatile Assembly ConfigAssembly;
+    protected readonly IServiceProvider serviceProvider;
     protected readonly IRequestContext requestContext;
 
     public EFContext(DbContextOptions<EFContext> options, IServiceProvider serviceProvider) : base(options)
     {
-        if (string.IsNullOrWhiteSpace(ConnectionString))
-            ConnectionString = options.FindExtension<SqlServerOptionsExtension>()?.ConnectionString;
+        //if (string.IsNullOrWhiteSpace(ConnectionString))
+        //    ConnectionString = options.FindExtension<SqlServerOptionsExtension>()?.ConnectionString;
 
+        this.serviceProvider = serviceProvider;
         this.requestContext = serviceProvider.GetRequiredService<IRequestContext>();
     }
 
-    public static EFContext Create(IServiceProvider serviceProvider)
-    {
-        ConnectionString.CheckNull(nameof(ConnectionString));
+    //public static EFContext Create(IServiceProvider serviceProvider)
+    //{
+    //    ConnectionString.CheckNull(nameof(ConnectionString));
 
-        var optionsBuilder = new DbContextOptionsBuilder<EFContext>();
-        optionsBuilder.UseSqlServer(ConnectionString);
+    //    var optionsBuilder = new DbContextOptionsBuilder<EFContext>();
+    //    optionsBuilder.UseSqlServer(ConnectionString);
 
-        return new EFContext(optionsBuilder.Options, serviceProvider);
-    }
+    //    return new EFContext(optionsBuilder.Options, serviceProvider);
+    //}
 
-    public string GetTableName<TEntity>()
-        where TEntity : class
-    {
-        var type = Model.GetEntityTypes().FirstOrDefault(w => w.ClrType == typeof(TEntity));
-        return type?.GetAnnotation("Relational:TableName").Value?.ToString();
-    }
+    //public string GetTableName<TEntity>()
+    //    where TEntity : class
+    //{
+    //    var type = Model.GetEntityTypes().FirstOrDefault(w => w.ClrType == typeof(TEntity));
+    //    return type?.GetAnnotation("Relational:TableName").Value?.ToString();
+    //}
 
     public readonly EntityDtoTracker EntityDtoTracker = new();
 
     #region SaveChangesAsync
 
-    IEnumerable<string> BeforeChanges()
+    //IEnumerable<string> BeforeChanges()
+    //{
+    //    var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    //    foreach (var entry in ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+    //    {
+    //        if (entry.State != EntityState.Deleted) this.requestContext.FillEntity(entry.Entity);
+
+    //        var cacheKeys = ((Entity)entry.Entity).CacheKeys;
+    //        if (!cacheKeys.IsNullOrEmpty())
+    //        {
+    //            foreach (var cacheKey in cacheKeys!)
+    //            {
+    //                expiredTags.Add(cacheKey);
+    //            }
+    //        }
+    //    }
+
+    //    return expiredTags.ToList();
+    //}
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
+#if DEBUG
+        var sw = new StopWatch();
+        sw.Start();
+#endif
+
         var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var entry in ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        var entries = ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
+        foreach (var entry in entries)
         {
-            if (entry.State != EntityState.Deleted) this.requestContext.FillEntity(entry.Entity);
+            if (entry.State != EntityState.Deleted)
+                this.requestContext.FillEntity(entry.Entity);
 
             var cacheKeys = ((Entity)entry.Entity).CacheKeys;
             if (!cacheKeys.IsNullOrEmpty())
@@ -75,17 +104,10 @@ public class EFContext : DbContext
             }
         }
 
-        return expiredTags.ToList();
-    }
-
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
-    {
-#if DEBUG
-        var sw = new StopWatch();
-        sw.Start();
-#endif
-
-        var expiredTags = BeforeChanges();
+        var onChanges = this.serviceProvider.GetService<IOnSaveChanges>();
+        object state = null;
+        if (onChanges != null)
+            state = await onChanges.OnChanging(this, entries, this.requestContext, this.serviceProvider);
 
 #if DEBUG
         var cost1 = sw.Stop();
@@ -98,6 +120,9 @@ public class EFContext : DbContext
         var cost2 = sw.Stop();
         sw.Start();
 #endif
+
+        if (onChanges != null)
+            await onChanges.OnChanged(this, this.serviceProvider, state);
 
         Parallel.ForEach(expiredTags, tag => QueryCacheManager.ExpireTag(tag));
         this.EntityDtoTracker.MapToDtos();

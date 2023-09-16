@@ -58,6 +58,12 @@ public static class DbExtensions
         });
     }
 
+    public static string GetTableName<TEntity>(this DbContext source)
+    {
+        var type = source?.Model.GetEntityTypes().FirstOrDefault(w => w.ClrType == typeof(TEntity));
+        return type?.GetAnnotation("Relational:TableName").Value?.ToString();
+    }
+
     #region FromCache
 
     static MemoryCacheEntryOptions TillTodayEnd => new()

@@ -25,8 +25,12 @@ public static class DependencyInjectionConfig
         if (useDefaultServiceContext)
             services.AddLightServiceContext();
 
-        services.AddLightDbContext(configuration, getConnectionString, dbAssembly);
+        services.AddLightDefaultDbContext(configuration, getConnectionString, dbAssembly);
+        return services.AddLightServices(matchedAssembly);
+    }
 
+    public static ICollection<Assembly> AddLightServices(this IServiceCollection services, Func<string, bool> matchedAssembly)
+    {
         var assemblies = LoadAllAssemblies(matchedAssembly).ToList();
         services.AddLightRepository(assemblies);
         services.AddLightAppService(assemblies);
@@ -60,7 +64,7 @@ public static class DependencyInjectionConfig
         return AppDomain.CurrentDomain.GetAssemblies().Where(w => w.FullName.IsMatchedAssembly(matchedAssembly));
     }
 
-    public static void RegisterAll(this IServiceCollection services, Type source, ICollection<Assembly> assemblies, bool excludeSelf, Action<Type, Type> action = null)
+    public static IServiceCollection RegisterAll(this IServiceCollection services, Type source, ICollection<Assembly> assemblies, bool excludeSelf, Action<Type, Type> action = null)
     {
         foreach (var iReg in assemblies.SelectMany(s => source.FindImplementations(source.IsInterface, s)).Where(w => !excludeSelf || w != source))
         {
@@ -84,6 +88,8 @@ public static class DependencyInjectionConfig
                 }
             }
         }
+
+        return services;
     }
 
     internal static IEnumerable<Type> FindImplementations(this Type source, bool findInterface, Assembly assembly = null)
@@ -115,20 +121,28 @@ public static class DependencyInjectionConfig
         return services;
     }
 
-    public static IServiceCollection AddLightDbContext(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly = null)
+    public static IServiceCollection AddLightDefaultDbContext(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly = null)
+    {
+        if (dbAssembly != null) EFContext.ConfigAssembly = dbAssembly;
+        services.AddLightDbContext<EFContext>(configuration, getConnectionString);
+        return services;
+    }
+
+    public static IServiceCollection AddLightDbContext<TContext>(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString)
+        where TContext : DbContext
     {
         if (getConnectionString == null)
             return services;
 
         var connectionString = getConnectionString(configuration);
-        EFContext.ConnectionString = connectionString;
-        EFContext.ConfigAssembly = dbAssembly;
-        services.AddDbContext<EFContext>(options => options.UseSqlServer(connectionString));
-        services.AddScoped<EFContext>();
+        services.AddDbContext<DbContext, TContext>(options => options.UseSqlServer(connectionString));
+        services.AddDbContext<TContext>(options => options.UseSqlServer(connectionString));
+        services.AddScoped<DbContext, TContext>();
+        services.AddScoped<TContext>();
         LinqToDBForEFTools.Initialize();
         QueryCacheManager.IsEnabled = configuration.GetSection("UseQueryCache").Value.EqualsIgnoreCase(true.ToString());
         using var scope = services.BuildServiceProvider().GetService<IServiceScopeFactory>().CreateScope();
-        using var context = scope.ServiceProvider.GetRequiredService<EFContext>();
+        using var context = scope.ServiceProvider.GetRequiredService<DbContext>();
         try
         {
             context.MigrateToLatestVersion(new DbMigrationsOptions { AutomaticMigrationDataLossAllowed = true });
@@ -142,21 +156,12 @@ public static class DependencyInjectionConfig
         return services;
     }
 
-    public static IServiceCollection AddLightRepository(this IServiceCollection services, ICollection<Assembly> assemblies)
-    {
+    public static IServiceCollection AddLightRepository(this IServiceCollection services, ICollection<Assembly> assemblies) =>
         services.RegisterAll(typeof(IRepository), assemblies, true);
-        return services;
-    }
 
-    public static IServiceCollection AddLightAppService(this IServiceCollection services, ICollection<Assembly> assemblies)
-    {
+    public static IServiceCollection AddLightAppService(this IServiceCollection services, ICollection<Assembly> assemblies) =>
         services.RegisterAll(typeof(IAppService), assemblies, true);
-        return services;
-    }
 
-    public static IServiceCollection AddLightBackgroundService(this IServiceCollection services, ICollection<Assembly> assemblies)
-    {
+    public static IServiceCollection AddLightBackgroundService(this IServiceCollection services, ICollection<Assembly> assemblies) =>
         services.RegisterAll(typeof(BackgroundService), assemblies, true, (_, imp) => services.TryAddEnumerable(ServiceDescriptor.Describe(typeof(IHostedService), imp, ServiceLifetime.Singleton)));
-        return services;
-    }
 }

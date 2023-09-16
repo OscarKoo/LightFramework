@@ -10,7 +10,7 @@
     <PackageProjectUrl>https://github.com/OscarKoo/LightFramework</PackageProjectUrl>
     <PackageIconUrl>https://raw.githubusercontent.com/OscarKoo/LightFramework/master/favicon.ico</PackageIconUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.0.10</Version>
+    <Version>1.0.11</Version>
   </PropertyGroup>
 
     <ItemGroup>
@@ -23,7 +23,6 @@
         <Folder Include="Common\Attributes\" />
         <Folder Include="HttpApi\Configurations\" />
         <Folder Include="EntityFrameworkCore\EntityConfigurations\" />
-        <Folder Include="EntityFrameworkCore\DataProviders\" />
         <Folder Include="HttpApi\Filters\" />
         <Folder Include="HttpApi\Utilities\" />
     </ItemGroup>

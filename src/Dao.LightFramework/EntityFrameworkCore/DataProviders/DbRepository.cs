@@ -8,18 +8,19 @@ using Dao.LightFramework.EntityFrameworkCore.Utilities;
 using Dao.LightFramework.Services;
 using LinqToDB;
 using LinqToDB.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
 public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TEntity>
     where TEntity : Entity, new()
 {
-    protected EFContext dbContext;
+    protected Microsoft.EntityFrameworkCore.DbContext dbContext;
     protected readonly bool isSoftDelete;
 
     public DbRepository(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        this.dbContext = _<EFContext>();
+        this.dbContext = _<Microsoft.EntityFrameworkCore.DbContext>();
         this.isSoftDelete = typeof(IDeleted).IsAssignableFrom(typeof(TEntity));
     }
 
@@ -165,7 +166,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         var tracker = new EntityDtoTracker();
         tracker.Add(entity, dto);
-        if (!autoSave) this.dbContext.EntityDtoTracker.Add(entity, dto);
+        if (!autoSave) (this.dbContext as EFContext)?.EntityDtoTracker.Add(entity, dto);
         await SaveAsync(entity, autoSave);
         tracker.MapToDtos();
         return entity;
@@ -178,7 +179,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         {
             var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue);
             tracker.Add(entity, dto);
-            if (!autoSave) this.dbContext.EntityDtoTracker.Add(entity, dto);
+            if (!autoSave) (this.dbContext as EFContext)?.EntityDtoTracker.Add(entity, dto);
             return entity;
         });
         await SaveManyAsync(entities, autoSave);
@@ -257,8 +258,9 @@ public class LockedDbRepository<TEntity> : DbRepository<TEntity>, ILockedDbRepos
 
             using (var scope = new TransactionScope(TransactionScopeOption.Suppress, TransactionManager.MaximumTimeout, TransactionScopeAsyncFlowOption.Enabled))
             {
-                await using (var context = EFContext.Create(ServiceProvider))
+                await ServiceProvider.ScopeAsync(async svc =>
                 {
+                    await using var context = svc.GetRequiredService<Microsoft.EntityFrameworkCore.DbContext>();
                     var requireSave = true;
                     if (entity == null)
                     {
@@ -277,7 +279,8 @@ public class LockedDbRepository<TEntity> : DbRepository<TEntity>, ILockedDbRepos
 
                     if (requireSave)
                         await context.SaveChangesAsync();
-                }
+                    return true;
+                });
 
                 scope.Complete();
             }
