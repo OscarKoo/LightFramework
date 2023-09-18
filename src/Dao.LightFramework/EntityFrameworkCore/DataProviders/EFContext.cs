@@ -4,7 +4,7 @@ using Dao.LightFramework.Domain.Entities;
 using Dao.LightFramework.Domain.Utilities;
 using Dao.LightFramework.Services.Contexts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.DependencyInjection;
 using Z.EntityFramework.Plus;
 #if DEBUG
@@ -80,6 +80,9 @@ public class EFContext : DbContext
     //    return expiredTags.ToList();
     //}
 
+    public static volatile bool OnSaveChanges;
+    public static readonly HashSet<Type> OnSavingEntityEntries = new();
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
 #if DEBUG
@@ -88,26 +91,48 @@ public class EFContext : DbContext
 #endif
 
         var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var entries = ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
+        var entries = ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
+        if (OnSaveChanges)
+            entries = entries.ToList();
+
+        var onSavings = new Dictionary<Type, IOnSavingEntityEntry>();
         foreach (var entry in entries)
         {
             if (entry.State != EntityState.Deleted)
                 this.requestContext.FillEntity(entry.Entity);
 
-            var cacheKeys = ((Entity)entry.Entity).CacheKeys;
-            if (!cacheKeys.IsNullOrEmpty())
+            var entityType = entry.Metadata.ClrType;
+            if (OnSavingEntityEntries.Contains(entityType))
             {
-                foreach (var cacheKey in cacheKeys!)
+                var onSaving = onSavings.GetOrAdd(entityType, t =>
                 {
-                    expiredTags.Add(cacheKey);
-                }
+                    var reg = typeof(IOnSavingEntityEntry<>).MakeGenericType(t);
+                    var imp = this.serviceProvider.GetService(reg);
+                    return (IOnSavingEntityEntry)imp;
+                });
+                if (onSaving != null)
+                    await onSaving.OnSaving(this, entry, this.requestContext, this.serviceProvider);
+            }
+
+            var cacheKeys = ((Entity)entry.Entity).CacheKeys;
+            if (cacheKeys.IsNullOrEmpty())
+                continue;
+
+            foreach (var cacheKey in cacheKeys)
+            {
+                expiredTags.Add(cacheKey);
             }
         }
 
-        var onChanges = this.serviceProvider.GetService<IOnSaveChanges>();
+        onSavings.Clear();
+
+        IOnSaveChanges onChanges = null;
         object state = null;
-        if (onChanges != null)
-            state = await onChanges.OnChanging(this, entries, this.requestContext, this.serviceProvider);
+        if (OnSaveChanges)
+        {
+            onChanges = this.serviceProvider.GetService<IOnSaveChanges>();
+            state = await onChanges.OnSaving(this, (IList<EntityEntry>)entries, this.requestContext, this.serviceProvider);
+        }
 
 #if DEBUG
         var cost1 = sw.Stop();
@@ -121,8 +146,8 @@ public class EFContext : DbContext
         sw.Start();
 #endif
 
-        if (onChanges != null)
-            await onChanges.OnChanged(this, this.serviceProvider, state);
+        if (OnSaveChanges)
+            await onChanges!.OnSaved(this, result, this.requestContext, this.serviceProvider, state);
 
         Parallel.ForEach(expiredTags, tag => QueryCacheManager.ExpireTag(tag));
         this.EntityDtoTracker.MapToDtos();

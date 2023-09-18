@@ -36,6 +36,7 @@ public static class DependencyInjectionConfig
         services.AddLightAppService(assemblies);
         services.AddLightMapster(assemblies);
         services.AddLightBackgroundService(assemblies);
+        services.AddLightOnSaveChanges(assemblies);
 
         return assemblies;
     }
@@ -72,18 +73,26 @@ public static class DependencyInjectionConfig
             {
                 foreach (var imp in iReg.FindImplementations(false, assembly))
                 {
-                    if (iReg.IsGenericType == imp.IsGenericType)
+                    var regType = iReg;
+                    if (iReg.IsGenericType != imp.IsGenericType)
                     {
-                        if (action == null)
-                        {
-                            Trace.WriteLine($"====== Register [{iReg.Name}] for [{imp.Name}] ======");
-                            services.AddScoped(iReg, imp);
-                        }
-                        else
-                        {
-                            Trace.WriteLine($"====== Find [{iReg.Name}] & [{imp.Name}] for custom action ======");
-                            action(iReg, imp);
-                        }
+                        if (imp.IsGenericType)
+                            continue;
+
+                        regType = imp.GetInterfaces().FirstOrDefault(w => w.IsGenericType && w.GetGenericTypeDefinition() == iReg);
+                        if (regType == null)
+                            continue;
+                    }
+
+                    if (action == null)
+                    {
+                        Trace.WriteLine($"====== Register [{(regType.IsGenericType ? regType.FullName : regType.Name)}] for [{(imp.IsGenericType ? imp.FullName : imp.Name)}] ======");
+                        services.AddScoped(regType, imp);
+                    }
+                    else
+                    {
+                        Trace.WriteLine($"====== Find [{(regType.IsGenericType ? regType.FullName : regType.Name)}] & [{(imp.IsGenericType ? imp.FullName : imp.Name)}] for custom action ======");
+                        action(regType, imp);
                     }
                 }
             }
@@ -164,4 +173,20 @@ public static class DependencyInjectionConfig
 
     public static IServiceCollection AddLightBackgroundService(this IServiceCollection services, ICollection<Assembly> assemblies) =>
         services.RegisterAll(typeof(BackgroundService), assemblies, true, (_, imp) => services.TryAddEnumerable(ServiceDescriptor.Describe(typeof(IHostedService), imp, ServiceLifetime.Singleton)));
+
+    public static IServiceCollection AddLightOnSaveChanges(this IServiceCollection services, ICollection<Assembly> assemblies)
+    {
+        services.RegisterAll(typeof(IOnSavingEntityEntry<>), assemblies, false, (iReg, imp) =>
+        {
+            services.AddTransient(iReg, imp);
+            var entityType = iReg.GenericTypeArguments.First();
+            EFContext.OnSavingEntityEntries.Add(entityType);
+        });
+        services.RegisterAll(typeof(IOnSaveChanges), assemblies, false, (iReg, imp) =>
+        {
+            services.AddTransient(iReg, imp);
+            EFContext.OnSaveChanges = true;
+        });
+        return services;
+    }
 }
