@@ -149,7 +149,8 @@ public class EFContext : DbContext
         if (OnSaveChanges)
             await onChanges!.OnSaved(this, result, this.requestContext, this.serviceProvider, state);
 
-        Parallel.ForEach(expiredTags, tag => QueryCacheManager.ExpireTag(tag));
+        if (expiredTags.Count > 0)
+            Parallel.ForEach(expiredTags, tag => QueryCacheManager.ExpireTag(tag));
         this.EntityDtoTracker.MapToDtos();
 
 #if DEBUG
