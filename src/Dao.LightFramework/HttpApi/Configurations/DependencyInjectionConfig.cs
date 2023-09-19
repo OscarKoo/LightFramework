@@ -44,6 +44,8 @@ public static class DependencyInjectionConfig
     static bool IsMatchedAssembly(this string name, Func<string, bool> matchedAssembly) =>
         name != null && (matchedAssembly == null || matchedAssembly(name) || name.StartsWith("Dao.LightFramework", StringComparison.OrdinalIgnoreCase));
 
+    static bool IsRegistered(this IServiceCollection services, Type type) => services.Any(w => w.ServiceType == type);
+
     public static IEnumerable<Assembly> LoadAllAssemblies(Func<string, bool> matchedAssembly)
     {
         foreach (var file in Directory.EnumerateFiles(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "*.dll")
@@ -83,6 +85,9 @@ public static class DependencyInjectionConfig
                         if (regType == null)
                             continue;
                     }
+
+                    if (services.IsRegistered(regType))
+                        continue;
 
                     if (action == null)
                     {
@@ -176,10 +181,14 @@ public static class DependencyInjectionConfig
 
     public static IServiceCollection AddLightOnSaveChanges(this IServiceCollection services, ICollection<Assembly> assemblies)
     {
-        services.RegisterAll(typeof(IOnSavingEntity<>), assemblies, false, (iReg, imp) =>
+        var rootType = typeof(IOnSavingEntity<>);
+        services.RegisterAll(rootType, assemblies, false, (iReg, imp) =>
         {
             services.AddTransient(iReg, imp);
-            var entityType = iReg.GenericTypeArguments[0];
+            var tSaving = iReg;
+            if (!rootType.IsGenericTypeDefinitionOf(iReg))
+                tSaving = iReg.GetInterfaces().First(w => rootType.IsGenericTypeDefinitionOf(w));
+            var entityType = tSaving.GenericTypeArguments[0];
             EFContext.OnSavingEntities.Add(entityType);
         });
         services.RegisterAll(typeof(IOnSaveChanges), assemblies, false, (iReg, imp) =>
