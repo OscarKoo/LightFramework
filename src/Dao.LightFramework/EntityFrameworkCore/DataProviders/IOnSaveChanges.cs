@@ -11,9 +11,9 @@ public interface IOnSaveChanges
     Task OnSaved(DbContext context, int result, IRequestContext requestContext, IServiceProvider serviceProvider, object state);
 }
 
-public interface IOnSavingEntityEntry
+public interface IOnSavingEntity
 {
     Task OnSaving(DbContext context, EntityEntry entry, IRequestContext requestContext, IServiceProvider serviceProvider);
 }
 
-public interface IOnSavingEntityEntry<TEntity> : IOnSavingEntityEntry where TEntity : Entity { }
+public interface IOnSavingEntity<TEntity> : IOnSavingEntity where TEntity : Entity { }

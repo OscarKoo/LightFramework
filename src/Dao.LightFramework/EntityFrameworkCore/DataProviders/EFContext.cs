@@ -81,7 +81,7 @@ public class EFContext : DbContext
     //}
 
     public static volatile bool OnSaveChanges;
-    public static readonly HashSet<Type> OnSavingEntityEntries = new();
+    public static readonly HashSet<Type> OnSavingEntities = new();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
@@ -95,42 +95,13 @@ public class EFContext : DbContext
         if (OnSaveChanges)
             entries = entries.ToList();
 
-        var onSavings = new Dictionary<Type, IOnSavingEntityEntry>();
-        foreach (var entry in entries)
-        {
-            if (entry.State != EntityState.Deleted)
-                this.requestContext.FillEntity(entry.Entity);
-
-            var entityType = entry.Metadata.ClrType;
-            if (OnSavingEntityEntries.Contains(entityType))
-            {
-                var onSaving = onSavings.GetOrAdd(entityType, t =>
-                {
-                    var reg = typeof(IOnSavingEntityEntry<>).MakeGenericType(t);
-                    var imp = this.serviceProvider.GetService(reg);
-                    return (IOnSavingEntityEntry)imp;
-                });
-                if (onSaving != null)
-                    await onSaving.OnSaving(this, entry, this.requestContext, this.serviceProvider);
-            }
-
-            var cacheKeys = ((Entity)entry.Entity).CacheKeys;
-            if (cacheKeys.IsNullOrEmpty())
-                continue;
-
-            foreach (var cacheKey in cacheKeys)
-            {
-                expiredTags.Add(cacheKey);
-            }
-        }
-
-        onSavings.Clear();
+        await OnSaving(expiredTags, entries);
 
         IOnSaveChanges onChanges = null;
         object state = null;
         if (OnSaveChanges)
         {
-            onChanges = this.serviceProvider.GetService<IOnSaveChanges>();
+            onChanges = this.serviceProvider.GetRequiredService<IOnSaveChanges>();
             state = await onChanges.OnSaving(this, (IList<EntityEntry>)entries, this.requestContext, this.serviceProvider);
         }
 
@@ -164,6 +135,35 @@ SaveChangesAsync cost: {cost2};
 #endif
 
         return result;
+    }
+
+    async Task OnSaving(ISet<string> expiredTags, IEnumerable<EntityEntry> entries)
+    {
+        var onSavings = new Dictionary<Type, IOnSavingEntity>();
+        foreach (var entry in entries)
+        {
+            if (entry.State != EntityState.Deleted)
+                this.requestContext.FillEntity(entry.Entity);
+
+            var entityType = entry.Metadata.ClrType;
+            if (OnSavingEntities.Contains(entityType))
+            {
+                var onSaving = onSavings.GetOrAdd(entityType, t => (IOnSavingEntity)this.serviceProvider.GetRequiredService(typeof(IOnSavingEntity<>).MakeGenericType(t)));
+                if (onSaving != null)
+                    await onSaving.OnSaving(this, entry, this.requestContext, this.serviceProvider);
+            }
+
+            var cacheKeys = ((Entity)entry.Entity).CacheKeys;
+            if (cacheKeys.IsNullOrEmpty())
+                continue;
+
+            foreach (var cacheKey in cacheKeys)
+            {
+                expiredTags.Add(cacheKey);
+            }
+        }
+
+        onSavings.Clear();
     }
 
     #endregion

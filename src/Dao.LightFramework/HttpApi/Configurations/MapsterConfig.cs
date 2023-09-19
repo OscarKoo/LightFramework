@@ -33,11 +33,7 @@ public static class MapsterConfig
         var type = typeof(DtoOfAttribute<>).GetGenericTypeDefinition();
         foreach (var dtoType in assemblies.SelectMany(s => s.GetTypes()))
         {
-            foreach (var attr in dtoType.GetCustomAttributes().Where(w =>
-                {
-                    var g = w.GetType();
-                    return g.IsGenericType && g.GetGenericTypeDefinition() == type;
-                }).Select(attr => (DtoOfAttribute)attr))
+            foreach (var attr in dtoType.GetCustomAttributes().Where(w => type.IsGenericTypeDefinitionOf(w.GetType())).Select(attr => (DtoOfAttribute)attr))
             {
                 Trace.WriteLine($"====== Map Dto [{dtoType.Name}] to Entity [{attr.EntityType.Name}] ======");
                 var setter = TypeAdapterConfig.GlobalSettings.NewConfig(dtoType, attr.EntityType).IgnoreNullValues(true).IgnoreMutable(attr.EntityType).IgnoreDomainSite(attr.EntityType); //.IgnoreLocked(entityType);

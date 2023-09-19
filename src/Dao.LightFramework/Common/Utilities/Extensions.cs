@@ -204,6 +204,9 @@ public static class Extensions
 
     public static bool HasInterface<TInterface>(this object source) => source is TInterface;
 
+    public static bool IsGenericTypeDefinitionOf(this Type parent, Type child) =>
+        parent != null && child != null && child.IsGenericType && child.GetGenericTypeDefinition() == parent;
+
     #endregion
 
     #region String
