@@ -1,16 +1,21 @@
 ﻿using Dao.LightFramework.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using OpenIddict.Abstractions;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Dao.LightFramework.Services.Contexts;
 
 public class RequestContext : IRequestContext
 {
+    protected readonly IHttpContextAccessor httpContextAccessor;
+
     public RequestContext(IHttpContextAccessor httpContextAccessor)
     {
+        this.httpContextAccessor = httpContextAccessor;
         Initialize(httpContextAccessor);
     }
 
+    public string ContextId { get; set; } = Guid.NewGuid().ToString();
     public string Domain { get; set; } = string.Empty;
     public string Site { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
@@ -24,11 +29,15 @@ public class RequestContext : IRequestContext
         if (context == null)
             return;
 
+        string lang = null;
         var claims = context.User;
         if (claims.Identity?.IsAuthenticated ?? false)
         {
-            UserId = claims.GetClaim("sub") ?? string.Empty;
-            User = claims.GetClaim("username") ?? claims.GetClaim("name") ?? string.Empty;
+            UserId = claims.GetClaim(Claims.Subject) ?? string.Empty;
+            User = claims.GetClaim(Claims.Username) ?? claims.GetClaim(Claims.Name) ?? string.Empty;
+            lang = claims.GetClaim(nameof(lang));
+            if (!string.IsNullOrWhiteSpace(lang))
+                Language = lang;
         }
 
         var request = context.Request;
@@ -39,11 +48,15 @@ public class RequestContext : IRequestContext
             Token = auths.Length >= 2 ? auths[1] : string.Empty;
         }
 
-        var cookies = request.Cookies;
-        if (cookies.TryGetValue("lang", out var lang)
-            && !string.IsNullOrWhiteSpace(lang))
-            Language = lang;
+        if (string.IsNullOrWhiteSpace(lang))
+        {
+            var cookies = request.Cookies;
+            if (cookies.TryGetValue(nameof(lang), out lang) && !string.IsNullOrWhiteSpace(lang))
+                Language = lang;
+        }
     }
+
+    public void Reinitialize() => Initialize(this.httpContextAccessor);
 
     public void FillEntity<T>(T entity)
     {

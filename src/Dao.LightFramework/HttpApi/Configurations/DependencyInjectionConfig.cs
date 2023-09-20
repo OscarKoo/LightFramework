@@ -86,8 +86,8 @@ public static class DependencyInjectionConfig
                             continue;
                     }
 
-                    if (services.IsRegistered(regType))
-                        continue;
+                    //if (services.IsRegistered(regType))
+                    //    continue;
 
                     if (action == null)
                     {
@@ -181,15 +181,31 @@ public static class DependencyInjectionConfig
 
     public static IServiceCollection AddLightOnSaveChanges(this IServiceCollection services, ICollection<Assembly> assemblies)
     {
-        var rootType = typeof(IOnSavingEntity<>);
-        services.RegisterAll(rootType, assemblies, false, (iReg, imp) =>
+        var hasGenericInterface = (Func<Type, bool>)(t => t.GetInterfaces().Any(w => typeof(IOnSavingEntity<>).IsGenericTypeDefinitionOf(w)));
+        services.RegisterAll(typeof(IOnSavingEntity), assemblies, false, (iReg, imp) =>
         {
-            services.AddTransient(iReg, imp);
-            var tSaving = iReg;
-            if (!rootType.IsGenericTypeDefinitionOf(iReg))
-                tSaving = iReg.GetInterfaces().First(w => rootType.IsGenericTypeDefinitionOf(w));
-            var entityType = tSaving.GenericTypeArguments[0];
-            EFContext.OnSavingEntities.Add(entityType);
+            var isGenericReg = typeof(IOnSavingEntity<>).IsGenericTypeDefinitionOf(iReg) || hasGenericInterface(iReg);
+            var isGenericImp = hasGenericInterface(imp);
+            if (!isGenericReg)
+            {
+                if (isGenericImp)
+                    return;
+
+                services.AddTransient(iReg, imp);
+                EFContext.OnSavingEntity = true;
+            }
+            else
+            {
+                if (!isGenericImp)
+                    return;
+
+                services.AddTransient(iReg, imp);
+                var tSaving = iReg;
+                if (!typeof(IOnSavingEntity<>).IsGenericTypeDefinitionOf(iReg))
+                    tSaving = iReg.GetInterfaces().First(w => typeof(IOnSavingEntity<>).IsGenericTypeDefinitionOf(w));
+                var entityType = tSaving.GenericTypeArguments[0];
+                EFContext.OnSavingEntities.Add(entityType);
+            }
         });
         services.RegisterAll(typeof(IOnSaveChanges), assemblies, false, (iReg, imp) =>
         {

@@ -72,15 +72,15 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
     static IEnumerable<FilterState> GetFilterStates(MemberInfo element)
     {
-        var type = typeof(IActionFilterAttribute);
-        return element.CustomAttributes.Where(w => type.IsAssignableFrom(w.AttributeType)).Select(s => new FilterState((IActionFilterAttribute)element.GetCustomAttribute(s.AttributeType)));
+        var type = typeof(IAsyncActionFilterAttribute);
+        return element.CustomAttributes.Where(w => type.IsAssignableFrom(w.AttributeType)).Select(s => new FilterState((IAsyncActionFilterAttribute)element.GetCustomAttribute(s.AttributeType)));
     }
 }
 
 sealed class FilterState
 {
-    internal FilterState(IActionFilterAttribute filter) => Filter = filter;
+    internal FilterState(IAsyncActionFilterAttribute filter) => Filter = filter;
 
-    internal IActionFilterAttribute Filter { get; set; }
+    internal IAsyncActionFilterAttribute Filter { get; set; }
     internal object State { get; set; }
 }

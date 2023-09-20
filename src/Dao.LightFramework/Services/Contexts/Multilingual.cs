@@ -4,15 +4,22 @@ using Newtonsoft.Json.Linq;
 
 namespace Dao.LightFramework.Services.Contexts;
 
+public static class MultilingualResource
+{
+    public static Dictionary<string, string> Setting { get; set; } = new()
+    {
+        { "zh-cn", "i18n/zh-cn.json" },
+        { "en-us", "i18n/en-us.json" }
+    };
+}
+
 public class Multilingual : IMultilingual
 {
     static readonly Dictionary<string, JObject> languages;
 
-    static Multilingual() => languages = new Dictionary<string, JObject>
-    {
-        { "zh-cn", (JObject)JsonConvert.DeserializeObject(File.ReadAllText("i18n/zh-cn.json")) },
-        { "en-us", (JObject)JsonConvert.DeserializeObject(File.ReadAllText("i18n/en-us.json")) }
-    };
+    static Multilingual() => languages = MultilingualResource.Setting == null
+        ? new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase)
+        : MultilingualResource.Setting.ToDictionary(kv => kv.Key, kv => (JObject)JsonConvert.DeserializeObject(File.ReadAllText(kv.Value)), StringComparer.OrdinalIgnoreCase);
 
     readonly IRequestContext requestContext;
 
@@ -32,7 +39,7 @@ public class Multilingual : IMultilingual
             i++;
 
             if (i == 0)
-                json = languages[this.requestContext.Language];
+                json = languages.GetValueOrDefault(this.requestContext.Language);
             if (json == null)
                 return defaultValue;
 
@@ -52,7 +59,7 @@ public class Multilingual : IMultilingual
 
     public string Get(string key, params object[] args) => Get(new[] { key }, args);
 
-    public string GetByLocale(string locale = null) => languages[locale ?? this.requestContext.Language].ToString(Formatting.None);
+    public string GetByLocale(string locale = null) => languages.GetValueOrDefault(locale ?? this.requestContext.Language).ToString(Formatting.None);
 
     public string GetAll() => JsonConvert.SerializeObject(languages);
 }

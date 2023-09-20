@@ -6,7 +6,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Dao.LightFramework.Common.Attributes;
 
-public class XApiKeyAttribute : Attribute, IActionFilterAttribute
+public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
 {
     public string HeaderKey { get; set; } = "X-API-KEY";
     public string ParameterKey { get; set; } = "apiKey";
@@ -18,8 +18,6 @@ public class XApiKeyAttribute : Attribute, IActionFilterAttribute
         sw.Start();
 
         var authenticator = serviceProvider.GetRequiredService<IAuthenticator>();
-        if (authenticator == null)
-            throw new NotImplementedException($"{nameof(IAuthenticator)} not implemented!");
 
         var request = executingContext.HttpContext.Request;
         var headers = request.Headers;
@@ -47,7 +45,7 @@ public class XApiKeyAttribute : Attribute, IActionFilterAttribute
             if (string.IsNullOrWhiteSpace(apiKeyValue) || !string.Equals(apiKey, apiKeyValue, StringComparison.Ordinal))
                 throw new UnauthorizedAccessException("ApiKey not set or not match.");
 
-            token = await authenticator.GenerateToken();
+            token = await authenticator.GenerateToken(null, null);
             if (string.IsNullOrWhiteSpace(token))
                 throw new UnauthorizedAccessException("Unable to generate access_token!");
 
@@ -65,5 +63,5 @@ Cost: {sw.Stop()}");
 public interface IAuthenticator
 {
     Task<bool> Authenticate(string token);
-    Task<string> GenerateToken();
+    Task<string> GenerateToken(string clientId, string secret);
 }

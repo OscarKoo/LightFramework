@@ -9,5 +9,6 @@ public interface IRequestContext
     string Language { get; set; }
     string Token { get; set; }
 
+    void Reinitialize();
     void FillEntity<T>(T entity);
 }

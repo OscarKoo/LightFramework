@@ -81,6 +81,7 @@ public class EFContext : DbContext
     //}
 
     public static volatile bool OnSaveChanges;
+    public static volatile bool OnSavingEntity;
     public static readonly HashSet<Type> OnSavingEntities = new();
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
@@ -139,11 +140,15 @@ SaveChangesAsync cost: {cost2};
 
     async Task OnSaving(ISet<string> expiredTags, IEnumerable<EntityEntry> entries)
     {
+        var onSavingEntity = !OnSavingEntity ? null : this.serviceProvider.GetRequiredService<IOnSavingEntity>();
         var onSavings = new Dictionary<Type, IOnSavingEntity>();
         foreach (var entry in entries)
         {
             if (entry.State != EntityState.Deleted)
                 this.requestContext.FillEntity(entry.Entity);
+
+            if (OnSavingEntity)
+                await onSavingEntity!.OnSaving(this, entry, this.requestContext, this.serviceProvider);
 
             var entityType = entry.Metadata.ClrType;
             if (OnSavingEntities.Contains(entityType))
