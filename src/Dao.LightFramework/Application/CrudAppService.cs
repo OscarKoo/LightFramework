@@ -22,7 +22,7 @@ public abstract class CrudAppService<TEntity, TDto> : AppService, ICrudAppServic
     public virtual async Task<TDto> SaveAsync(TDto dto)
     {
         dto.CheckNull(nameof(TEntity));
-        await this.repository.SaveDtoAsync(dto, null, true, false);
+        await this.repository.SaveDtoAsync(dto, true, false);
         return dto;
     }
 

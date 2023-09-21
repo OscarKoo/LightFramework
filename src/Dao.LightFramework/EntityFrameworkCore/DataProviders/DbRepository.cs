@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Transactions;
 using Dao.IndividualLock;
+using Dao.LightFramework.Common.Exceptions;
 using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Domain.Entities;
 using Dao.LightFramework.Domain.Utilities;
@@ -161,7 +162,9 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return dto.Adapt(entity, ignoreNullValue);
     }
 
-    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, TEntity entity = null, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId
+    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId => await SaveDtoAsync(dto, null, autoSave, ignoreNullValue);
+
+    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, TEntity entity, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
     {
         entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         var tracker = new EntityDtoTracker();
@@ -172,7 +175,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return entity;
     }
 
-    public async Task<ICollection<TDto>> SaveManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId
+    public async Task<ICollection<TDto>> SaveManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
     {
         var tracker = new EntityDtoTracker();
         var entities = await dtos.SelectAsync(async dto =>
@@ -187,16 +190,18 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return dtos;
     }
 
-    public async Task<int> DeleteDtoAsync<TDto>(TDto dto, TEntity entity = null, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId
+    public async Task<int> DeleteDtoAsync<TDto>(TDto dto, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
     {
         if (dto == null)
             return 0;
 
-        entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue);
+        var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue);
+        if (entity.IsNew)
+            throw new DataHasChangedException(Lang.Get("数据已被其他用户删除. ({0}: {1})", typeof(TDto).Name, dto.Id));
         return await DeleteAsync(entity, autoSave);
     }
 
-    public async Task<int> DeleteManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true, params string[] cacheKeys) where TDto : IId
+    public async Task<int> DeleteManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
     {
         if (dtos.IsNullOrEmpty())
             return 0;
