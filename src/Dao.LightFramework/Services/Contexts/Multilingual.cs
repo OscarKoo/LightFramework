@@ -4,9 +4,9 @@ using Newtonsoft.Json.Linq;
 
 namespace Dao.LightFramework.Services.Contexts;
 
-public static class MultilingualResource
+public static class MultilingualSetting
 {
-    public static Dictionary<string, string> Setting { get; set; } = new()
+    public static Dictionary<string, string> LanguagePaths { get; set; } = new()
     {
         { "zh-cn", "i18n/zh-cn.json" },
         { "en-us", "i18n/en-us.json" }
@@ -17,9 +17,7 @@ public class Multilingual : IMultilingual
 {
     static readonly Dictionary<string, JObject> languages;
 
-    static Multilingual() => languages = MultilingualResource.Setting == null
-        ? new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase)
-        : MultilingualResource.Setting.ToDictionary(kv => kv.Key, kv => (JObject)JsonConvert.DeserializeObject(File.ReadAllText(kv.Value)), StringComparer.OrdinalIgnoreCase);
+    static Multilingual() => languages = MultilingualSetting.LanguagePaths?.ToDictionary(kv => kv.Key, kv => (JObject)JsonConvert.DeserializeObject(File.ReadAllText(kv.Value)), StringComparer.OrdinalIgnoreCase) ?? new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase);
 
     readonly IRequestContext requestContext;
 

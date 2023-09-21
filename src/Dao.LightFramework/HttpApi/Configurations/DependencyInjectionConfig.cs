@@ -19,13 +19,13 @@ public static class DependencyInjectionConfig
 {
     public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services,
         bool useDefaultServiceContext,
-        IConfiguration configuration, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly,
+        IConfiguration configuration, Func<IConfiguration, string> getConnectionString,
         Func<string, bool> matchedAssembly)
     {
         if (useDefaultServiceContext)
             services.AddLightServiceContext();
 
-        services.AddLightDefaultDbContext(configuration, getConnectionString, dbAssembly);
+        services.AddLightDbContext<EFContext>(configuration, getConnectionString);
         return services.AddLightServices(matchedAssembly);
     }
 
@@ -135,13 +135,6 @@ public static class DependencyInjectionConfig
         return services;
     }
 
-    public static IServiceCollection AddLightDefaultDbContext(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString, Assembly dbAssembly = null)
-    {
-        if (dbAssembly != null) EFContext.ConfigAssembly = dbAssembly;
-        services.AddLightDbContext<EFContext>(configuration, getConnectionString);
-        return services;
-    }
-
     public static IServiceCollection AddLightDbContext<TContext>(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString)
         where TContext : DbContext
     {
@@ -194,7 +187,7 @@ public static class DependencyInjectionConfig
 
             if (!isGenericReg)
             {
-                EFContext.OnSavingEntity = true;
+                DbContextSetting.HasOnSavingEntity = true;
             }
             else
             {
@@ -202,13 +195,13 @@ public static class DependencyInjectionConfig
                 if (!isGenericInterface(iReg))
                     tSaving = iReg.GetInterfaces().First(isGenericInterface);
                 var entityType = tSaving.GenericTypeArguments[0];
-                EFContext.OnSavingEntities.Add(entityType);
+                DbContextSetting.SavingEntityTypes.Add(entityType);
             }
         });
         services.RegisterAll(typeof(IOnSaveChanges), assemblies, false, (iReg, imp) =>
         {
             services.AddTransient(iReg, imp);
-            EFContext.OnSaveChanges = true;
+            DbContextSetting.HasOnSaveChanges = true;
         });
         return services;
     }

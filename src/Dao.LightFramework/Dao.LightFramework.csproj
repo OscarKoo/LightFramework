@@ -29,6 +29,7 @@
   <ItemGroup>
     <PackageReference Include="Dao.IndividualLock" Version="3.1.1" />
     <PackageReference Include="EFCore.AutomaticMigrations" Version="7.0.10" />
+    <PackageReference Include="IdentityModel" Version="6.1.0" />
     <PackageReference Include="linq2db.EntityFrameworkCore" Version="7.5.0" />
     <PackageReference Include="Mapster" Version="7.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="7.0.10" />

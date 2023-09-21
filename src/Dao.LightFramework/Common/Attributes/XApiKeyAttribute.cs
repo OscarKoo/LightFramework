@@ -1,4 +1,5 @@
 ﻿using Dao.LightFramework.Common.Utilities;
+using IdentityModel.Client;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +30,7 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
             if (auth.Length == 2)
             {
                 token = auth[1];
-                isValid = await authenticator.Authenticate(token);
+                isValid = await authenticator.Authenticate(null, null, token);
             }
         }
 
@@ -62,6 +63,6 @@ Cost: {sw.Stop()}");
 
 public interface IAuthenticator
 {
-    Task<bool> Authenticate(string token);
-    Task<string> GenerateToken(string clientId, string secret);
+    Task<bool> Authenticate(string clientId, string secret, string token, Parameters parameters = default);
+    Task<string> GenerateToken(string clientId, string secret, Parameters parameters = default);
 }

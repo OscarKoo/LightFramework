@@ -13,20 +13,28 @@ using System.Diagnostics;
 
 namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
+public static class DbContextSetting
+{
+    public static bool HasOnSaveChanges { get; set; }
+    public static bool HasOnSavingEntity { get; set; }
+    public static HashSet<Type> SavingEntityTypes { get; set; } = new();
+    public static Assembly ConfigurationsAssembly { get; set; }
+}
+
 public class EFContext : DbContext
 {
     #region OnModelCreating
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(ConfigAssembly ?? Assembly.GetExecutingAssembly());
+        modelBuilder.ApplyConfigurationsFromAssembly(DbContextSetting.ConfigurationsAssembly ?? Assembly.GetExecutingAssembly());
         base.OnModelCreating(modelBuilder);
     }
 
     #endregion
 
     //public static volatile string ConnectionString;
-    public static volatile Assembly ConfigAssembly;
+    //public static volatile Assembly ConfigAssembly;
     protected readonly IServiceProvider serviceProvider;
     protected readonly IRequestContext requestContext;
 
@@ -80,10 +88,6 @@ public class EFContext : DbContext
     //    return expiredTags.ToList();
     //}
 
-    public static volatile bool OnSaveChanges;
-    public static volatile bool OnSavingEntity;
-    public static readonly HashSet<Type> OnSavingEntities = new();
-
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
 #if DEBUG
@@ -93,14 +97,14 @@ public class EFContext : DbContext
 
         var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var entries = ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-        if (OnSaveChanges)
+        if (DbContextSetting.HasOnSaveChanges)
             entries = entries.ToList();
 
         await OnSaving(expiredTags, entries);
 
         IOnSaveChanges onChanges = null;
         object state = null;
-        if (OnSaveChanges)
+        if (DbContextSetting.HasOnSaveChanges)
         {
             onChanges = this.serviceProvider.GetRequiredService<IOnSaveChanges>();
             state = await onChanges.OnSaving(this, (IList<EntityEntry>)entries, this.requestContext, this.serviceProvider);
@@ -118,7 +122,7 @@ public class EFContext : DbContext
         sw.Start();
 #endif
 
-        if (OnSaveChanges)
+        if (DbContextSetting.HasOnSaveChanges)
             await onChanges!.OnSaved(this, result, this.requestContext, this.serviceProvider, state);
 
         if (expiredTags.Count > 0)
@@ -140,18 +144,18 @@ SaveChangesAsync cost: {cost2};
 
     async Task OnSaving(ISet<string> expiredTags, IEnumerable<EntityEntry> entries)
     {
-        var onSavingEntity = !OnSavingEntity ? null : this.serviceProvider.GetRequiredService<IOnSavingEntity>();
+        var onSavingEntity = !DbContextSetting.HasOnSavingEntity ? null : this.serviceProvider.GetRequiredService<IOnSavingEntity>();
         var onSavings = new Dictionary<Type, IOnSavingEntity>();
         foreach (var entry in entries)
         {
             if (entry.State != EntityState.Deleted)
                 this.requestContext.FillEntity(entry.Entity);
 
-            if (OnSavingEntity)
+            if (DbContextSetting.HasOnSavingEntity)
                 await onSavingEntity!.OnSaving(this, entry, this.requestContext, this.serviceProvider);
 
             var entityType = entry.Metadata.ClrType;
-            if (OnSavingEntities.Contains(entityType))
+            if (DbContextSetting.SavingEntityTypes.Contains(entityType))
             {
                 var onSaving = onSavings.GetOrAdd(entityType, t => (IOnSavingEntity)this.serviceProvider.GetRequiredService(typeof(IOnSavingEntity<>).MakeGenericType(t)));
                 if (onSaving != null)
