@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Dao.LightFramework.Common.Utilities;
 
@@ -262,6 +263,49 @@ public static class Extensions
     public static T JsonCopy<T>(this object source) => source == null ? default : source.ToJson().ToObject<T>();
 
     public static dynamic JsonCopy(this object source) => source == null ? default : JsonConvert.DeserializeObject(source.ToJson());
+
+    public static IEnumerable<T> GetValues<T>(this JToken source, string name, StringComparison comparison = StringComparison.Ordinal)
+    {
+        if (source == null || source.Type == JTokenType.Null)
+            yield break;
+
+        switch (source.Type)
+        {
+            case JTokenType.Array:
+            case JTokenType.Object:
+            {
+                foreach (var v in source.SelectMany(sm => sm.GetValues<T>(name, comparison)))
+                {
+                    yield return v;
+                }
+
+                break;
+            }
+            case JTokenType.Property:
+            {
+                var p = (JProperty)source;
+                var value = p.Value;
+                if (string.Equals(p.Name, name, comparison))
+                {
+                    yield return value.Type switch
+                    {
+                        JTokenType.Null => default,
+                        JTokenType.Object => value.ToObject<T>(),
+                        _ => value.Value<T>()
+                    };
+                }
+                else
+                {
+                    foreach (var v in value.SelectMany(sm => sm.GetValues<T>(name, comparison)))
+                    {
+                        yield return v;
+                    }
+                }
+
+                break;
+            }
+        }
+    }
 
     #endregion
 

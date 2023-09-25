@@ -8,8 +8,7 @@ namespace Dao.LightFramework.Common.Utilities;
 
 public static class HttpClientExtensions
 {
-    public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null)
-
+    public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
     {
         if (client == null)
             return default;
@@ -24,13 +23,10 @@ public static class HttpClientExtensions
         sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {client.BaseAddress?.Scheme}://{client.BaseAddress?.Authority}/{uri?.OriginalString}");
 
         var request = new HttpRequestMessage(method, uri);
-        if (method != HttpMethod.Get && body != null)
+        if (method != HttpMethod.Get && content != null)
         {
-            request.Content = JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
-            sb.AppendLine("Parameter: " + body.ToJson());
+            request.Content = content;
+            sb.AppendLine("Parameter: " + await content.ReadAsStringAsync());
         }
 
         if (headers != null)
@@ -57,7 +53,7 @@ public static class HttpClientExtensions
         catch (Exception ex)
         {
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"request \"{client.BaseAddress?.ToString().JoinUri(query)}\" failed, response: {result}", (int)(response?.StatusCode ?? 0), ex.GetBaseException());
+            throw new BadHttpRequestException($"request \"{(client.BaseAddress?.ToString()).JoinUri(query)}\" failed, response: {result}, error: {error}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {
@@ -69,6 +65,15 @@ public static class HttpClientExtensions
             else
                 StaticLogger.LogError(sb.ToString());
         }
+    }
+
+    public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
+        await client.SendAsync(query, method, JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }), headers);
+
+    public static async Task<TResult> SendAsync<TResult>(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
+    {
+        var result = await client.SendAsync(query, method, content, headers);
+        return result.ToObject<TResult>();
     }
 
     public static async Task<TResult> SendAsync<TResult>(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null)
