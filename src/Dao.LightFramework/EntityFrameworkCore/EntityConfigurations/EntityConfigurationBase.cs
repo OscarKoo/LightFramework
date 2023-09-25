@@ -62,7 +62,7 @@ public static class EntityTypeBuilderExtensions
 {
     public static PropertyBuilder<TProperty> SetProperty<TEntity, TProperty>(this EntityTypeBuilder<TEntity> builder,
         Expression<Func<TEntity, TProperty>> propertyExpression,
-        int? maxLength = null, bool isRequired = false, string columnType = null, bool useDateTime2 = false, int? order = null)
+        int? maxLength = null, bool isRequired = false, string columnType = null, bool useDateTime2 = false, int? order = null, bool isConcurrencyToken = false)
         where TEntity : Entity
     {
         var property = builder.Property(propertyExpression);
@@ -78,14 +78,16 @@ public static class EntityTypeBuilderExtensions
             property = property.HasColumnType("datetime");
         if (order != null)
             property.HasColumnOrder(order);
+        if (isConcurrencyToken)
+            property.IsConcurrencyToken();
         return property;
     }
 
     public static PropertyBuilder<TProperty> SetProperty<TEntity, TProperty>(this EntityTypeBuilder<TEntity> builder,
         Expression<Func<TEntity, TProperty>> propertyExpression,
-        bool isRequired, string columnType = null, bool useDateTime2 = false, int? order = null)
+        bool isRequired, string columnType = null, bool useDateTime2 = false, int? order = null, bool isConcurrencyToken = false)
         where TEntity : Entity =>
-        builder.SetProperty(propertyExpression, null, isRequired, columnType, useDateTime2, order);
+        builder.SetProperty(propertyExpression, null, isRequired, columnType, useDateTime2, order, isConcurrencyToken);
 
     public static IndexBuilder<TEntity> SetIndex<TEntity>(this EntityTypeBuilder<TEntity> builder, string name, Expression<Func<TEntity, object>> indexExpression, bool isUnique = false, Expression<Func<TEntity, object>> includeExpression = null)
         where TEntity : Entity
