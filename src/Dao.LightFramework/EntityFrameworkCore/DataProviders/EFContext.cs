@@ -15,9 +15,9 @@ namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
 public static class DbContextSetting
 {
-    public static bool HasOnSaveChanges { get; set; }
-    public static bool HasOnSavingEntity { get; set; }
-    public static HashSet<Type> SavingEntityTypes { get; set; } = new();
+    internal static bool HasOnSaveChanges { get; set; }
+    internal static bool HasOnSavingEntity { get; set; }
+    internal static HashSet<Type> SavingEntityTypes { get; set; } = new();
     public static Assembly ConfigurationsAssembly { get; set; }
 }
 

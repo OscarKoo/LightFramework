@@ -20,6 +20,7 @@ public class RequestContext : IRequestContext
     public string Site { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
     public string User { get; set; } = string.Empty;
+    public string Operator { get; set; }
     public string Language { get; set; } = "zh-cn";
     public string Token { get; set; }
 
@@ -35,6 +36,7 @@ public class RequestContext : IRequestContext
         {
             UserId = claims.GetClaim(Claims.Subject) ?? string.Empty;
             User = claims.GetClaim(Claims.Username) ?? claims.GetClaim(Claims.Name) ?? string.Empty;
+            Operator = claims.GetClaim("operator");
             lang = claims.GetClaim(nameof(lang));
             if (!string.IsNullOrWhiteSpace(lang))
                 Language = lang;
@@ -68,10 +70,10 @@ public class RequestContext : IRequestContext
 
         if (entity is IMutable mutable)
         {
-            mutable.CreateUser ??= UserId;
+            mutable.CreateUser ??= Operator ?? UserId;
             mutable.CreateTime ??= DateTime.Now;
 
-            mutable.UpdateUser = UserId;
+            mutable.UpdateUser = Operator ?? UserId;
             mutable.UpdateTime = DateTime.Now;
         }
     }

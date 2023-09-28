@@ -25,12 +25,13 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
             var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;
             var filters = new List<FilterState>();
+            var existing = new HashSet<Type>();
             var sw = new StopWatch();
             if (controllerAction != null)
             {
                 sw.Start();
-                filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo));
-                filters.AddRange(GetFilterStates(controllerAction.MethodInfo));
+                filters.AddRange(GetFilterStates(controllerAction.MethodInfo, existing, true));
+                filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo, existing, false));
 
                 foreach (var filter in filters)
                 {
@@ -70,10 +71,18 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         }
     }
 
-    static IEnumerable<FilterState> GetFilterStates(MemberInfo element)
+    static IEnumerable<FilterState> GetFilterStates(MemberInfo element, ISet<Type> existing, bool addIfExits)
     {
         var type = typeof(IAsyncActionFilterAttribute);
-        return element.CustomAttributes.Where(w => type.IsAssignableFrom(w.AttributeType)).Select(s => new FilterState((IAsyncActionFilterAttribute)element.GetCustomAttribute(s.AttributeType)));
+        return element.CustomAttributes.Where(w =>
+        {
+            if (!type.IsAssignableFrom(w.AttributeType)
+                || (!addIfExits && existing.Contains(w.AttributeType)))
+                return false;
+
+            existing.Add(w.AttributeType);
+            return true;
+        }).Select(s => new FilterState((IAsyncActionFilterAttribute)element.GetCustomAttribute(s.AttributeType)));
     }
 }
 

@@ -2,6 +2,7 @@
 using System.Reflection;
 using Dao.LightFramework.Application;
 using Dao.LightFramework.Common.Utilities;
+using Dao.LightFramework.EntityFrameworkCore.DataMigration;
 using Dao.LightFramework.EntityFrameworkCore.DataProviders;
 using Dao.LightFramework.Services.Contexts;
 using EFCore.AutomaticMigrations;
@@ -17,16 +18,15 @@ namespace Dao.LightFramework.HttpApi.Configurations;
 
 public static class DependencyInjectionConfig
 {
-    public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services,
-        bool useDefaultServiceContext,
-        IConfiguration configuration, Func<IConfiguration, string> getConnectionString,
-        Func<string, bool> matchedAssembly)
+    public static ICollection<Assembly> AddLightDependencyInjection(this IServiceCollection services, IConfiguration configuration, DependencyInjectionSetting setting)
     {
-        if (useDefaultServiceContext)
+        setting.CheckNull(nameof(DependencyInjectionSetting));
+
+        if (setting.UseDefaultServiceContext)
             services.AddLightServiceContext();
 
-        services.AddLightDbContext<EFContext>(configuration, getConnectionString);
-        return services.AddLightServices(matchedAssembly);
+        services.AddLightDbContext<EFContext>(configuration, setting.GetConnectionString, setting.DataMigrationSetting);
+        return services.AddLightServices(setting.MatchedAssembly);
     }
 
     public static ICollection<Assembly> AddLightServices(this IServiceCollection services, Func<string, bool> matchedAssembly)
@@ -135,7 +135,7 @@ public static class DependencyInjectionConfig
         return services;
     }
 
-    public static IServiceCollection AddLightDbContext<TContext>(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString)
+    public static IServiceCollection AddLightDbContext<TContext>(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString, DataMigrationSetting dataMigrationSetting = null)
         where TContext : DbContext
     {
         if (getConnectionString == null)
@@ -152,7 +152,13 @@ public static class DependencyInjectionConfig
         using var context = scope.ServiceProvider.GetRequiredService<DbContext>();
         try
         {
+            if (!string.IsNullOrWhiteSpace(dataMigrationSetting?.DBScriptsFolder) && !string.IsNullOrWhiteSpace(dataMigrationSetting.OnMigratingFolder))
+                ScriptRunner.Run(context, dataMigrationSetting.DBScriptsFolder, dataMigrationSetting.OnMigratingFolder, dataMigrationSetting.Replacements);
+
             context.MigrateToLatestVersion(new DbMigrationsOptions { AutomaticMigrationDataLossAllowed = true });
+
+            if (!string.IsNullOrWhiteSpace(dataMigrationSetting?.DBScriptsFolder) && !string.IsNullOrWhiteSpace(dataMigrationSetting.OnMigratedFolder))
+                ScriptRunner.Run(context, dataMigrationSetting.DBScriptsFolder, dataMigrationSetting.OnMigratedFolder, dataMigrationSetting.Replacements);
         }
         catch (Exception e)
         {
@@ -205,4 +211,12 @@ public static class DependencyInjectionConfig
         });
         return services;
     }
+}
+
+public class DependencyInjectionSetting
+{
+    public bool UseDefaultServiceContext { get; set; } = true;
+    public Func<IConfiguration, string> GetConnectionString { get; set; }
+    public DataMigrationSetting DataMigrationSetting { get; set; }
+    public Func<string, bool> MatchedAssembly { get; set; }
 }
