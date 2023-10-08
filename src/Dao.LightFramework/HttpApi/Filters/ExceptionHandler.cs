@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using Dao.LightFramework.Common.Exceptions;
 using Dao.LightFramework.Common.Utilities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -20,12 +21,14 @@ public class ExceptionHandler : ExceptionFilterAttribute
         }
 
         context.HttpContext.Response.ContentType = "application/json";
-        context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        context.HttpContext.Response.StatusCode = context.Exception is BadHttpRequestException { StatusCode: > 0 } bhrEx
+            ? bhrEx.StatusCode
+            : (int)HttpStatusCode.BadRequest;
 
-        var result = new
+        var result = new ExceptionResult
         {
             Type = (context.Exception is WarningException ? ExceptionType.Warning : ExceptionType.Error).ToString(),
-            context.Exception.GetBaseException().Message
+            Message = context.Exception.GetBaseException().Message
         };
         if (result.Type == TypeError)
             StaticLogger.LogError(context.Exception, result.Message);

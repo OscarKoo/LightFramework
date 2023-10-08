@@ -1,7 +1,7 @@
 ﻿using Dao.LightFramework.Common.Utilities;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
@@ -26,7 +26,7 @@ public class ConfirmException : Exception
         context.HttpContext.Response.Headers["Access-Control-Expose-Headers"] = Header;
         context.HttpContext.Response.Headers[Header] = Uri.EscapeDataString(JsonConvert.SerializeObject(this.content));
         context.HttpContext.Response.StatusCode = 600;
-        context.Result = new JsonResult(new
+        context.Result = new JsonResult(new ExceptionResult
         {
             Type = ExceptionType.Confirm.ToString(),
             Message = this.content.Q,
@@ -111,13 +111,12 @@ public class ConfirmHistory
 
     public bool Matched(string key, string id) => K.EqualsIgnoreCase(key) && P.EqualsIgnoreCase(id);
 
-    public ConfirmHistory Copy() =>
-        new ConfirmHistory
-        {
-            K = K,
-            A = A,
-            P = P
-        };
+    public ConfirmHistory Copy() => new()
+    {
+        K = K,
+        A = A,
+        P = P
+    };
 }
 
 public class ConfirmContent : ConfirmHistory
