@@ -108,23 +108,27 @@ public static class DependencyInjectionConfig
 
     internal static IEnumerable<Type> FindImplementations(this Type source, bool findInterface, Assembly assembly = null)
     {
-        if (source.IsGenericType)
-            source = source.GetGenericTypeDefinition();
-        foreach (var t in (assembly ?? source.Assembly).GetTypes().Where(w => w.IsAbstract != w.IsClass && w.IsInterface == findInterface))
-        {
-            var type = t;
-            do
-            {
-                if (type.IsGenericType)
-                    type = type.GetGenericTypeDefinition();
+        //if (source.IsGenericType)
+        //    source = source.GetGenericTypeDefinition();
+        //foreach (var t in (assembly ?? source.Assembly).GetTypes().Where(w => w.IsAbstract != w.IsClass && w.IsInterface == findInterface))
+        //{
+        //    var type = t;
+        //    do
+        //    {
+        //        if (type.IsGenericType)
+        //            type = type.GetGenericTypeDefinition();
 
-                if (source == type || source.IsAssignableFrom(type) || type.GetInterfaces().Any(w => w == source || source.IsGenericTypeDefinitionOf(w)))
-                {
-                    yield return t;
-                    break;
-                }
-            } while ((type = type.BaseType) != null && type != typeof(object));
-        }
+        //        if (source == type || source.IsAssignableFrom(type) || type.GetInterfaces().Any(w => w == source || source.IsGenericTypeDefinitionOf(w)))
+        //        {
+        //            yield return t;
+        //            break;
+        //        }
+        //    } while ((type = type.BaseType) != null && type != typeof(object));
+        //}
+
+        return (assembly ?? source.Assembly).GetTypes()
+            .Where(w => w.IsAbstract != w.IsClass && w.IsInterface == findInterface
+                && (w == source || source.IsAssignableFrom(w) || w.GetInterfaces().Any(a => a == source || source.IsGenericTypeDefinitionOf(a))));
     }
 
     public static IServiceCollection AddLightServiceContext(this IServiceCollection services)

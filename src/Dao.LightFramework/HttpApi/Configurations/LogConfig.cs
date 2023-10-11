@@ -10,7 +10,11 @@ public static class LogConfig
 {
     public static IHostBuilder AddLightSerilog(this IHostBuilder host)
     {
-        host.UseSerilog((ctx, config) => config.ReadFrom.Configuration(ctx.Configuration));
+        host.UseSerilog((ctx, svc, config) =>
+        {
+            config.ReadFrom.Services(svc);
+            config.ReadFrom.Configuration(ctx.Configuration);
+        });
         return host;
     }
 

@@ -4,6 +4,11 @@ using Serilog.Events;
 
 namespace Dao.LightFramework.Common.Utilities;
 
+public class SeriLoggerSetting
+{
+    public static Func<string, Logger> CreateLogger { get; set; }
+}
+
 public class SeriLogger<TService>
 {
     static readonly Logger logger;
@@ -11,11 +16,13 @@ public class SeriLogger<TService>
     static SeriLogger()
     {
         var serviceName = typeof(TService).Name;
-        logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName})  {{Message:lj}}{{NewLine}}")
-            .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour)
-            .CreateLogger();
+        logger = SeriLoggerSetting.CreateLogger != null
+            ? SeriLoggerSetting.CreateLogger(serviceName)
+            : new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
+                .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour)
+                .CreateLogger();
     }
 
     readonly string name;
