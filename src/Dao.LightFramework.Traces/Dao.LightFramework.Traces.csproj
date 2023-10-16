@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <Authors>Oscar Koo</Authors>
+    <Copyright>Copyright 2023 Oscar Koo</Copyright>
+    <PackageLicenseUrl>https://github.com/OscarKoo/LightFramework/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/OscarKoo/LightFramework</PackageProjectUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/OscarKoo/LightFramework/master/favicon.ico</PackageIconUrl>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="NewId" Version="4.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+</Project>

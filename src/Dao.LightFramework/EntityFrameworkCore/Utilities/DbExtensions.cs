@@ -1,10 +1,16 @@
 ﻿using System.Collections.Concurrent;
+using System.Data;
+using System.IO.Compression;
 using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Domain.Entities;
 using Dao.LightFramework.Domain.Utilities;
 using Dao.LightFramework.EntityFrameworkCore.DataProviders;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.Extensions.Caching.Memory;
 using Z.EntityFramework.Plus;
 
@@ -62,6 +68,65 @@ public static class DbExtensions
     {
         var type = source?.Model.GetEntityTypes().FirstOrDefault(w => w.ClrType == typeof(TEntity));
         return type?.GetAnnotation("Relational:TableName").Value?.ToString();
+    }
+
+    public static string GetConnectionString(this DbContext source)
+    {
+        var optionField = typeof(DbContext).GetField("_options", BindingFlags.NonPublic | BindingFlags.Instance);
+        var option = (DbContextOptions)optionField?.GetValue(source);
+        return option?.FindExtension<SqlServerOptionsExtension>()?.ConnectionString;
+    }
+
+    public static void UpdateSnapshot(this DbContext source, Func<string, string> updateFunc)
+    {
+        var connStr = source.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connStr) || updateFunc == null)
+            return;
+
+        SqlHelper.Exec(connStr, conn =>
+        {
+            string id;
+            string snapshot;
+            using (var cmd = new SqlCommand("select top 1 MigrationId, Snapshot from __ContextSnapshot order by CreatedDate DESC", conn))
+            {
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return 0;
+
+                    id = reader.GetString(0);
+
+                    using var gzipStream = new GZipStream(reader.GetStream(1), CompressionMode.Decompress);
+                    using (var sr = new StreamReader(gzipStream))
+                    {
+                        snapshot = sr.ReadToEnd();
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(snapshot))
+                return 0;
+            snapshot = updateFunc(snapshot);
+            if (string.IsNullOrWhiteSpace(snapshot))
+                return 0;
+
+            using (var cmd = new SqlCommand("update __ContextSnapshot set Snapshot = @Snapshot where MigrationId = @MigrationId", conn))
+            {
+                cmd.Parameters.Add(new SqlParameter("@MigrationId", SqlDbType.NVarChar, 150) { Value = id });
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    using (var gzipStream = new GZipStream(memoryStream, CompressionLevel.Fastest, true))
+                        gzipStream.Write((ReadOnlySpan<byte>)Encoding.UTF8.GetBytes(snapshot));
+                    memoryStream.Seek(0L, SeekOrigin.Begin);
+                    cmd.Parameters.Add(new SqlParameter("@Snapshot", SqlDbType.VarBinary, -1) { Value = memoryStream.ToArray() });
+                }
+
+                cmd.ExecuteNonQuery();
+                return 0;
+            }
+        });
     }
 
     #region FromCache

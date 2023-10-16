@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Dao.LightFramework.Traces;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -155,19 +156,27 @@ public static class Extensions
 
         async Task ScopeQuery(TSource src, int index, IServiceProvider sp, CancellationToken ct) => await sp.ScopeAsync(async svc => result[index] = await actionAsync(src, index, svc, ct));
 
-        if (source.Count == 1)
-            await ScopeQuery(source.First(), 0, serviceProvider, token);
-        else
+        TraceContext.SpanId.Degrade().Lock();
+        try
         {
-            var option = new ParallelOptions { CancellationToken = token };
-            if (degree > 0)
-                option.MaxDegreeOfParallelism = degree;
+            if (source.Count == 1)
+                await ScopeQuery(source.First(), 0, serviceProvider, token);
+            else
+            {
+                var option = new ParallelOptions { CancellationToken = token };
+                if (degree > 0)
+                    option.MaxDegreeOfParallelism = degree;
 
-            var list = source.Select((s, i) => new Tuple<TSource, int>(s, i)).ToList();
-            await Parallel.ForEachAsync(list, option, async (t, ct) => await ScopeQuery(t.Item1, t.Item2, serviceProvider, ct));
+                var list = source.Select((s, i) => new Tuple<TSource, int>(s, i)).ToList();
+                await Parallel.ForEachAsync(list, option, async (t, ct) => await ScopeQuery(t.Item1, t.Item2, serviceProvider, ct));
+            }
+
+            return result;
         }
-
-        return result;
+        finally
+        {
+            TraceContext.SpanId.Unlock();
+        }
     }
 
     public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
@@ -327,6 +336,25 @@ public static class Extensions
 
     public static string ToDateString(this DateTime source) => source.ToString("yyyy-MM-dd");
     public static DateTime ToSqlDateTime(this DateTime source) => new(source.Ticks - source.Ticks % 10000, source.Kind);
+
+    #endregion
+
+    #region Object
+
+    public static T Caught<T>(this object source, Func<T> func)
+    {
+        if (func == null)
+            return default;
+
+        try
+        {
+            return func();
+        }
+        catch (Exception ex)
+        {
+            return default;
+        }
+    }
 
     #endregion
 }

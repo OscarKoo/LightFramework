@@ -1,4 +1,5 @@
-﻿using Dao.LightFramework.Domain.Entities;
+﻿using Dao.LightFramework.Common.Utilities;
+using Dao.LightFramework.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -15,7 +16,6 @@ public class RequestContext : IRequestContext
         Initialize(httpContextAccessor);
     }
 
-    public string ContextId { get; set; } = Guid.NewGuid().ToString();
     public string Domain { get; set; } = string.Empty;
     public string Site { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
@@ -31,8 +31,8 @@ public class RequestContext : IRequestContext
             return;
 
         string lang = null;
-        var claims = context.User;
-        if (claims.Identity?.IsAuthenticated ?? false)
+        var claims = this.Caught(() => context.User); // unknown null reference exception thrown here ?!
+        if (claims?.Identity?.IsAuthenticated ?? false)
         {
             UserId = claims.GetClaim(Claims.Subject) ?? string.Empty;
             User = claims.GetClaim(Claims.Username) ?? claims.GetClaim(Claims.Name) ?? string.Empty;

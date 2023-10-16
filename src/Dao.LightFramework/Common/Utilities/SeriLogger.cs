@@ -6,23 +6,24 @@ namespace Dao.LightFramework.Common.Utilities;
 
 public class SeriLoggerSetting
 {
-    public static Func<string, Logger> CreateLogger { get; set; }
+    public static Func<string, ILogger> CreateLogger { get; set; }
 }
 
 public class SeriLogger<TService>
 {
-    static readonly Logger logger;
+    static readonly ILogger logger;
 
     static SeriLogger()
     {
         var serviceName = typeof(TService).Name;
-        logger = SeriLoggerSetting.CreateLogger != null
+        var instance = SeriLoggerSetting.CreateLogger != null
             ? SeriLoggerSetting.CreateLogger(serviceName)
             : new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
                 .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour)
                 .CreateLogger();
+        logger = instance.ForContext(Constants.SourceContextPropertyName, serviceName);
     }
 
     readonly string name;

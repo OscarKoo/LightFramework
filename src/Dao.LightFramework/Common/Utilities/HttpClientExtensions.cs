@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Dao.LightFramework.Traces;
 using Microsoft.AspNetCore.Http;
 
 namespace Dao.LightFramework.Common.Utilities;
@@ -34,6 +35,15 @@ public static class HttpClientExtensions
             foreach (var header in headers.Where(w => !string.IsNullOrWhiteSpace(w.Key)))
             {
                 request.Headers.Add(header.Key, header.Value);
+            }
+
+            var traceId = TraceContext.TraceId.Value;
+            if (!string.IsNullOrWhiteSpace(traceId))
+                request.Headers.Add(TraceId.Header, traceId);
+            if (TraceContext.SpanId.HasValue)
+            {
+                var spanId = TraceContext.SpanId.Degrade().Value;
+                request.Headers.Add(SpanId.Header, spanId);
             }
         }
 

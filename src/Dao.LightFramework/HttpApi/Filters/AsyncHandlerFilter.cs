@@ -2,6 +2,7 @@
 using System.Text;
 using Dao.LightFramework.Common.Attributes;
 using Dao.LightFramework.Common.Utilities;
+using Dao.LightFramework.Traces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -29,6 +30,11 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             var sw = new StopWatch();
             if (controllerAction != null)
             {
+                TraceContext.ResetIds(request, 1);
+                var trace = TraceContext.AsyncContext;
+                trace.ClassName = controllerAction.ControllerName;
+                trace.MethodName = controllerAction.ActionName;
+
                 sw.Start();
                 filters.AddRange(GetFilterStates(controllerAction.MethodInfo, existing, true));
                 filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo, existing, false));

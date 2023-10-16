@@ -1,7 +1,9 @@
 ﻿using System.Reflection;
+using System.Text.RegularExpressions;
 using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Domain.Entities;
 using Dao.LightFramework.Domain.Utilities;
+using Dao.LightFramework.EntityFrameworkCore.Utilities;
 using Dao.LightFramework.Services.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -19,14 +21,37 @@ public static class DbContextSetting
     internal static bool HasOnSavingEntity { get; set; }
     internal static HashSet<Type> SavingEntityTypes { get; set; } = new();
     public static Assembly ConfigurationsAssembly { get; set; }
+    public static string Collation { get; set; }
 }
 
 public class EFContext : DbContext
 {
     #region OnModelCreating
 
+    static readonly Regex regCollation = new(@"\s+\.UseCollation\(""[A-Za-z0-9_]+""\)", RegexOptions.Compiled);
+
+    void ChangeCollation(ModelBuilder modelBuilder, string collation)
+    {
+        var connStr = this.GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connStr))
+            return;
+
+        var existingCollation = SqlHelper.Exec(connStr, "SELECT collation_name FROM sys.databases WHERE database_id = DB_ID()", cmd => cmd.ExecuteScalar()?.ToString());
+        if (!string.IsNullOrWhiteSpace(existingCollation))
+        {
+            this.UpdateSnapshot(snapshot => regCollation.Replace(snapshot, string.Empty));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(collation))
+            return;
+
+        modelBuilder.UseCollation(collation);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        ChangeCollation(modelBuilder, DbContextSetting.Collation);
         modelBuilder.ApplyConfigurationsFromAssembly(DbContextSetting.ConfigurationsAssembly ?? Assembly.GetExecutingAssembly());
         base.OnModelCreating(modelBuilder);
     }
