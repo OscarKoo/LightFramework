@@ -35,9 +35,9 @@ public class SpanId
 {
     public const string Header = "X-Span-Id";
 
-    int locked;
     string prefix;
     int seed;
+
     public string Value => !string.IsNullOrWhiteSpace(this.prefix)
         ? $"{this.prefix}.{this.seed}"
         : this.seed > 0
@@ -71,26 +71,49 @@ public class SpanId
         return this;
     }
 
+    #region Degrade
+
     public SpanId Degrade()
     {
-        if (Interlocked.Add(ref this.locked, 0) == 0)
+        this.prefix = Value;
+        this.seed = 0;
+        return this;
+    }
+
+    bool isDegrading;
+
+    public IDisposable Degrading()
+    {
+        if (this.isDegrading)
+            return null;
+
+        lock (this)
         {
+            if (this.isDegrading)
+                return null;
+
+            this.isDegrading = true;
+
             this.prefix = Value;
             this.seed = 0;
+
+            return new SpanIdDegrading(this);
         }
-
-        return this;
     }
 
-    public SpanId Lock()
+    sealed class SpanIdDegrading : IDisposable
     {
-        Interlocked.Increment(ref this.locked);
-        return this;
+        SpanId instance;
+
+        internal SpanIdDegrading(SpanId instance) => this.instance = instance;
+
+        public void Dispose()
+        {
+            var tmp = this.instance;
+            this.instance = null;
+            tmp.isDegrading = false;
+        }
     }
 
-    public SpanId Unlock()
-    {
-        Interlocked.Decrement(ref this.locked);
-        return this;
-    }
+    #endregion
 }

@@ -156,8 +156,7 @@ public static class Extensions
 
         async Task ScopeQuery(TSource src, int index, IServiceProvider sp, CancellationToken ct) => await sp.ScopeAsync(async svc => result[index] = await actionAsync(src, index, svc, ct));
 
-        TraceContext.SpanId.Degrade().Lock();
-        try
+        using (TraceContext.SpanId.Degrading())
         {
             if (source.Count == 1)
                 await ScopeQuery(source.First(), 0, serviceProvider, token);
@@ -172,10 +171,6 @@ public static class Extensions
             }
 
             return result;
-        }
-        finally
-        {
-            TraceContext.SpanId.Unlock();
         }
     }
 
