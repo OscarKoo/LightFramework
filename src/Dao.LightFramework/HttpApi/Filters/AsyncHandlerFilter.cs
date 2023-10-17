@@ -31,6 +31,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             if (controllerAction != null)
             {
                 TraceContext.ResetIds(request, 1);
+                TraceContext.SpanId.Degrade();
                 var trace = TraceContext.AsyncContext;
                 trace.ClassName = controllerAction.ControllerName;
                 trace.MethodName = controllerAction.ActionName;

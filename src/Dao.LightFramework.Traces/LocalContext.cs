@@ -24,8 +24,9 @@ public class TraceId
         var value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
 
         if (string.IsNullOrWhiteSpace(value))
-            Value = defaultValue ?? NewId.NextSequentialGuid().ToString();
+            value = defaultValue ?? NewId.NextSequentialGuid().ToString();
 
+        Value = value;
         return this;
     }
 }
@@ -45,14 +46,20 @@ public class SpanId
 
     public bool HasValue => !string.IsNullOrWhiteSpace(this.prefix) || this.seed > 0;
 
-    public SpanId Reset(HttpRequest request = null, int seed = 0)
+    public SpanId Reset(HttpRequest request = null, int defaultSeed = 0)
     {
         var value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
 
         if (string.IsNullOrWhiteSpace(value))
         {
             this.prefix = null;
-            this.seed = seed;
+            this.seed = defaultSeed;
+        }
+        else
+        {
+            var digital = value.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            this.prefix = digital.Length == 1 ? null : string.Join(".", digital[..^1]);
+            this.seed = digital[^1].ToInt32();
         }
 
         return this;

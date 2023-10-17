@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -30,20 +31,21 @@ public static class HttpClientExtensions
             sb.AppendLine("Parameter: " + await content.ReadAsStringAsync());
         }
 
+        request.Headers.RemoveNames(TraceId.Header, SpanId.Header);
+        var traceId = TraceContext.TraceId.Value;
+        if (!string.IsNullOrWhiteSpace(traceId))
+            request.Headers.Add(TraceId.Header, traceId);
+        if (TraceContext.SpanId.HasValue)
+        {
+            var spanId = TraceContext.SpanId.Value;
+            request.Headers.Add(SpanId.Header, spanId);
+        }
+
         if (headers != null)
         {
             foreach (var header in headers.Where(w => !string.IsNullOrWhiteSpace(w.Key)))
             {
-                request.Headers.Add(header.Key, header.Value);
-            }
-
-            var traceId = TraceContext.TraceId.Value;
-            if (!string.IsNullOrWhiteSpace(traceId))
-                request.Headers.Add(TraceId.Header, traceId);
-            if (TraceContext.SpanId.HasValue)
-            {
-                var spanId = TraceContext.SpanId.Degrade().Value;
-                request.Headers.Add(SpanId.Header, spanId);
+                request.Headers.Set(header.Key, header.Value);
             }
         }
 
@@ -90,5 +92,25 @@ public static class HttpClientExtensions
     {
         var result = await client.SendAsync(query, method, body, headers);
         return result.ToObject<TResult>();
+    }
+
+    public static void RemoveNames(this HttpHeaders headers, params string[] names)
+    {
+        if (headers == null || names.IsNullOrEmpty())
+            return;
+
+        foreach (var name in names)
+        {
+            if (headers.Contains(name))
+                headers.Remove(name);
+        }
+    }
+
+    public static void Set(this HttpHeaders headers, string name, string value)
+    {
+        if (headers == null)
+            return;
+        headers.RemoveNames(name);
+        headers.Add(name, value);
     }
 }

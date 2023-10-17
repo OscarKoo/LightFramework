@@ -29,4 +29,9 @@ public static class TraceContext
         TraceId.Reset(request);
         SpanId.Reset(request, spanIdSeed);
     }
+
+    internal static int ToInt32(this string source, int defaultValue = 0) =>
+        string.IsNullOrWhiteSpace(source) || !int.TryParse(source, out var number)
+            ? defaultValue
+            : number;
 }
