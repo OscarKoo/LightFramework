@@ -30,11 +30,11 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             var sw = new StopWatch();
             if (controllerAction != null)
             {
-                TraceContext.ResetIds(request, 1);
-                TraceContext.SpanId.Degrade();
-                var trace = TraceContext.AsyncContext;
-                trace.ClassName = controllerAction.ControllerName;
-                trace.MethodName = controllerAction.ActionName;
+                var info = TraceContext.Info.Renew();
+                info.ClassName = controllerAction.ControllerName;
+                info.MethodName = controllerAction.ActionName;
+                TraceContext.TraceId.Renew(request);
+                TraceContext.SpanId.Renew(request, 1).Degrade();
 
                 sw.Start();
                 filters.AddRange(GetFilterStates(controllerAction.MethodInfo, existing, true));

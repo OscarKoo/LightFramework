@@ -154,24 +154,27 @@ public static class Extensions
 
         var result = new TResult[source.Count];
 
-        async Task ScopeQuery(TSource src, int index, IServiceProvider sp, CancellationToken ct) => await sp.ScopeAsync(async svc => result[index] = await actionAsync(src, index, svc, ct));
-
-        using (TraceContext.SpanId.Degrading())
+        async Task ScopeQuery(TSource src, int index, IServiceProvider sp, CancellationToken ct)
         {
-            if (source.Count == 1)
-                await ScopeQuery(source.First(), 0, serviceProvider, token);
-            else
-            {
-                var option = new ParallelOptions { CancellationToken = token };
-                if (degree > 0)
-                    option.MaxDegreeOfParallelism = degree;
-
-                var list = source.Select((s, i) => new Tuple<TSource, int>(s, i)).ToList();
-                await Parallel.ForEachAsync(list, option, async (t, ct) => await ScopeQuery(t.Item1, t.Item2, serviceProvider, ct));
-            }
-
-            return result;
+            TraceContext.SpanId.ContinueRenew();
+            await sp.ScopeAsync(async svc => result[index] = await actionAsync(src, index, svc, ct));
         }
+
+        TraceContext.SpanId.Degrade();
+
+        if (source.Count == 1)
+            await ScopeQuery(source.First(), 0, serviceProvider, token);
+        else
+        {
+            var option = new ParallelOptions { CancellationToken = token };
+            if (degree > 0)
+                option.MaxDegreeOfParallelism = degree;
+
+            var list = source.Select((s, i) => new Tuple<TSource, int>(s, i)).ToList();
+            await Parallel.ForEachAsync(list, option, async (t, ct) => await ScopeQuery(t.Item1, t.Item2, serviceProvider, ct));
+        }
+
+        return result;
     }
 
     public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,

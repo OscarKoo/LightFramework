@@ -1,4 +1,5 @@
 ﻿using Dao.LightFramework.Common.Utilities;
+using Dao.LightFramework.Traces;
 using Microsoft.Extensions.Hosting;
 
 namespace Dao.LightFramework.Application;
@@ -40,6 +41,8 @@ public abstract class AppBackgroundService<TService> : BackgroundService
     {
         try
         {
+            TraceContext.Info.Renew().ModuleName = typeof(TService).Name;
+            TraceContext.SpanId.Degrade(true);
             await OnExecuteAsync(stoppingToken);
         }
         catch (Exception ex)

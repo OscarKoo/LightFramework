@@ -3,35 +3,39 @@ using Microsoft.AspNetCore.Http;
 
 namespace Dao.LightFramework.Traces;
 
-public class LocalContext
+public abstract class LocalContext<T> where T : LocalContext<T>, new()
 {
-    internal TraceId TraceId { get; set; }
-    internal SpanId SpanId { get; set; }
+    protected T Renew(AsyncLocal<T> host, Action<T> onCreating = null)
+    {
+        var context = new T();
+        onCreating?.Invoke(context);
+        host.Value = context;
+        return context;
+    }
+}
 
+public class ContextInfo : LocalContext<ContextInfo>
+{
     public string ModuleName { get; set; }
     public string ClassName { get; set; }
     public string MethodName { get; set; }
+
+    public ContextInfo Renew() => Renew(TraceContext.AsyncContextInfo);
 }
 
-public class TraceId
+public class TraceId : LocalContext<TraceId>
 {
     public const string Header = "X-Trace-Id";
 
     public string Value { get; set; }
 
-    public TraceId Reset(HttpRequest request = null, string defaultValue = null)
-    {
-        var value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
-
-        if (string.IsNullOrWhiteSpace(value))
-            value = defaultValue ?? NewId.NextSequentialGuid().ToString();
-
-        Value = value;
-        return this;
-    }
+    public TraceId Renew(HttpRequest request = null, string defaultValue = null) => Renew(TraceContext.AsyncTraceId,
+        ctx => ctx.Value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w))
+            ?? defaultValue
+            ?? NewId.NextSequentialGuid().ToString());
 }
 
-public class SpanId
+public class SpanId : LocalContext<SpanId>
 {
     public const string Header = "X-Span-Id";
 
@@ -46,74 +50,87 @@ public class SpanId
 
     public bool HasValue => !string.IsNullOrWhiteSpace(this.prefix) || this.seed > 0;
 
-    public SpanId Reset(HttpRequest request = null, int defaultSeed = 0)
+    public SpanId Renew(HttpRequest request = null, int defaultSeed = 0) => Renew(TraceContext.AsyncSpanId, ctx =>
     {
         var value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
 
         if (string.IsNullOrWhiteSpace(value))
         {
-            this.prefix = null;
-            this.seed = defaultSeed;
+            ctx.prefix = null;
+            ctx.seed = defaultSeed;
         }
         else
         {
             var digital = value.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            this.prefix = digital.Length == 1 ? null : string.Join(".", digital[..^1]);
-            this.seed = digital[^1].ToInt32();
+            ctx.prefix = digital.Length == 1 ? null : string.Join(".", digital[..^1]);
+            ctx.seed = digital[^1].ToInt32();
         }
-
-        return this;
-    }
+    });
 
     public SpanId Continue()
     {
-        this.seed++;
-        return this;
+        lock (this)
+        {
+            this.seed++;
+            return this;
+        }
+    }
+
+    public SpanId ContinueRenew()
+    {
+        lock (this)
+        {
+            this.seed++;
+            return Renew(TraceContext.AsyncSpanId, ctx =>
+            {
+                ctx.prefix = this.prefix;
+                ctx.seed = this.seed;
+            });
+        }
     }
 
     #region Degrade
 
-    public SpanId Degrade()
+    public SpanId Degrade(bool force = false) => Renew(TraceContext.AsyncSpanId, ctx =>
     {
-        this.prefix = Value;
-        this.seed = 0;
-        return this;
-    }
+        if (force || HasValue)
+            ctx.prefix = Value;
+    });
 
-    bool isDegrading;
+    //bool isDegrading;
 
-    public IDisposable Degrading()
-    {
-        if (this.isDegrading)
-            return null;
+    //public IDisposable Degrading()
+    //{
+    //    if (this.isDegrading)
+    //        return null;
 
-        lock (this)
-        {
-            if (this.isDegrading)
-                return null;
+    //    lock (this)
+    //    {
+    //        if (this.isDegrading)
+    //            return null;
 
-            this.isDegrading = true;
+    //        this.isDegrading = true;
 
-            this.prefix = Value;
-            this.seed = 0;
+    //        this.prefix = Value;
+    //        this.seed = 0;
 
-            return new SpanIdDegrading(this);
-        }
-    }
+    //        return new SpanIdDegrading(this);
+    //    }
+    //}
 
-    sealed class SpanIdDegrading : IDisposable
-    {
-        SpanId instance;
+    //sealed class SpanIdDegrading : IDisposable
+    //{
+    //    SpanId instance;
 
-        internal SpanIdDegrading(SpanId instance) => this.instance = instance;
+    //    internal SpanIdDegrading(SpanId instance) => this.instance = instance;
 
-        public void Dispose()
-        {
-            var tmp = this.instance;
-            this.instance = null;
-            tmp.isDegrading = false;
-        }
-    }
+    //    public void Dispose()
+    //    {
+    //        var tmp = this.instance;
+    //        this.instance = null;
+    //        tmp.isDegrading = false;
+    //    }
+    //}
 
     #endregion
 }

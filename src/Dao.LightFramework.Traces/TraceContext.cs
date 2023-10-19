@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace Dao.LightFramework.Traces;
+﻿namespace Dao.LightFramework.Traces;
 
 public static class TraceContext
 {
@@ -9,8 +7,9 @@ public static class TraceContext
 
     #region AsyncLocal
 
-    static readonly AsyncLocal<LocalContext> asyncLocalContext = new();
-    public static LocalContext AsyncContext => asyncLocalContext.Value ??= new LocalContext();
+    internal static readonly AsyncLocal<ContextInfo> AsyncContextInfo = new();
+    internal static readonly AsyncLocal<TraceId> AsyncTraceId = new();
+    internal static readonly AsyncLocal<SpanId> AsyncSpanId = new();
 
     #endregion
 
@@ -21,14 +20,9 @@ public static class TraceContext
 
     #endregion
 
-    public static TraceId TraceId => AsyncContext.TraceId ??= new TraceId();
-    public static SpanId SpanId => AsyncContext.SpanId ??= new SpanId();
-
-    public static void ResetIds(HttpRequest request = null, int spanIdSeed = 0)
-    {
-        TraceId.Reset(request);
-        SpanId.Reset(request, spanIdSeed);
-    }
+    public static ContextInfo Info => AsyncContextInfo.Value ??= new ContextInfo();
+    public static TraceId TraceId => AsyncTraceId.Value ??= new TraceId();
+    public static SpanId SpanId => AsyncSpanId.Value ??= new SpanId();
 
     internal static int ToInt32(this string source, int defaultValue = 0) =>
         string.IsNullOrWhiteSpace(source) || !int.TryParse(source, out var number)
