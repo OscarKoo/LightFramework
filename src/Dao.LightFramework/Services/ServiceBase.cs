@@ -25,7 +25,7 @@ public abstract class ServiceBase : IDisposable
 
     protected virtual void Disposing()
     {
-        this.services.Clear();
+        this.services?.Clear();
     }
 
     public void Dispose()

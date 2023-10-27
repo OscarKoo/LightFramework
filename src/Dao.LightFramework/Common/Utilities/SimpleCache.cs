@@ -3,12 +3,19 @@ using Dao.IndividualLock;
 
 namespace Dao.LightFramework.Common.Utilities;
 
-public class SimpleCache<TCategory>
+public class SimpleCache<TKey>
 {
-    readonly ConcurrentDictionary<string, SimpleCacheItem> cache = new(StringComparer.OrdinalIgnoreCase);
-    readonly IndividualLocks<string> locks = new(StringComparer.OrdinalIgnoreCase);
+    readonly ConcurrentDictionary<TKey, SimpleCacheItem> cache;
+    readonly IndividualLocks<TKey> locks;
 
-    public bool TryGetValue<T>(string key, out T value)
+    public SimpleCache(IEqualityComparer<TKey> comparer = null)
+    {
+        comparer ??= EqualityComparer<TKey>.Default;
+        this.cache = new ConcurrentDictionary<TKey, SimpleCacheItem>(comparer);
+        this.locks = new IndividualLocks<TKey>(comparer);
+    }
+
+    public bool TryGetValue<T>(TKey key, out T value)
     {
         if (!this.cache.TryGetValue(key, out var item)
             || item.Expiration <= DateTime.UtcNow)
@@ -21,7 +28,7 @@ public class SimpleCache<TCategory>
         return true;
     }
 
-    public async Task<T> GetOrAddAsync<T>(string key, Func<string, Task<T>> valueFunc, int expiredMinutes = 1)
+    public async Task<T> GetOrAddAsync<T>(TKey key, Func<TKey, Task<T>> valueFunc, int expiredMinutes = 1)
     {
         if (TryGetValue(key, out T value))
             return value;
@@ -51,6 +58,10 @@ public class SimpleCache<TCategory>
             return value;
         }
     }
+
+    public bool Remove(TKey key) => this.cache.TryRemove(key, out _);
+
+    public void Clear() => this.cache.Clear();
 }
 
 class SimpleCacheItem
