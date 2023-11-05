@@ -38,25 +38,27 @@ public abstract class WebApiRepository<TDto> : ServiceContextServiceBase, IWebAp
         }
     }
 
-    async Task<TResult> Send<TResult>(string query, HttpMethod method, object body)
+    async Task<TResult> Send<TResult>(string query, HttpMethod method, object body, IDictionary<string, string> headers = null)
     {
-        Dictionary<string, string> header = null;
         var token = RequestContext.Token;
         if (!string.IsNullOrEmpty(token))
-            header = new Dictionary<string, string> { { "Authorization", $"Bearer {token}" } };
+        {
+            headers ??= new Dictionary<string, string>();
+            headers["Authorization"] = $"Bearer {token}";
+        }
 
-        return await HttpClient.SendAsync<TResult>(query, method, body, header);
+        return await HttpClient.SendAsync<TResult>(query, method, body, headers);
     }
 
     readonly ConcurrentDictionary<string, object> queryCache = new(StringComparer.OrdinalIgnoreCase);
 
-    protected virtual async Task<TResult> SendAsync<TResult>(string query, HttpMethod method, object body = null, bool useCache = true)
+    protected virtual async Task<TResult> SendAsync<TResult>(string query, HttpMethod method, object body = null, bool useCache = true, IDictionary<string, string> headers = null)
     {
         if (!useCache)
-            return await Send<TResult>(query, method, body);
+            return await Send<TResult>(query, method, body, headers);
 
         var key = new { query, body }.ToJson();
-        var result = await this.queryCache.GetOrAddAsync(key, async k => (object)await Send<TResult>(query, method, body));
+        var result = await this.queryCache.GetOrAddAsync(key, async k => (object)await Send<TResult>(query, method, body, headers));
         return (TResult)result;
     }
 
