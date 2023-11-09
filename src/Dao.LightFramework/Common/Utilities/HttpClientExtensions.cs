@@ -21,8 +21,9 @@ public static class HttpClientExtensions
             ? new Uri(query, UriKind.RelativeOrAbsolute)
             : null;
 
+        var url = (client.BaseAddress?.ToString()).JoinUri(query);
         var sb = new StringBuilder();
-        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {client.BaseAddress?.Scheme}://{client.BaseAddress?.Authority}/{uri?.OriginalString}");
+        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {url}");
 
         var request = new HttpRequestMessage(method, uri);
         if (method != HttpMethod.Get && content != null)
@@ -65,7 +66,7 @@ public static class HttpClientExtensions
         catch (Exception ex)
         {
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"request \"{(client.BaseAddress?.ToString()).JoinUri(query)}\" failed, response: {result}, error: {error}", (int)(response?.StatusCode ?? 0));
+            throw new BadHttpRequestException($"request \"{url}\" failed, response: {result}, error: {error}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {
