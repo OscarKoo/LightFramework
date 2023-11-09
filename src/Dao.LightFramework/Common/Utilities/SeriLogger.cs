@@ -21,7 +21,7 @@ public class SeriLogger<TService>
             : new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
-                .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour)
+                .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: 168)
                 .CreateLogger();
         logger = instance.ForContext(Constants.SourceContextPropertyName, serviceName);
     }

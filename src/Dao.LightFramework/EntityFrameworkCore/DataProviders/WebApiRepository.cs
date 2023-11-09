@@ -62,9 +62,9 @@ public abstract class WebApiRepository<TDto> : ServiceContextServiceBase, IWebAp
         return (TResult)result;
     }
 
-    protected async Task<TResult> GetAsync<TResult>(string query, bool useCache = true) => await SendAsync<TResult>(query, HttpMethod.Get, useCache: useCache);
+    protected async Task<TResult> GetAsync<TResult>(string query, bool useCache = true, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Get, useCache: useCache, headers: headers);
 
-    protected async Task<TResult> PostAsync<TResult>(string query, object body, bool useCache = true) => await SendAsync<TResult>(query, HttpMethod.Post, body, useCache);
+    protected async Task<TResult> PostAsync<TResult>(string query, object body, bool useCache = true, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Post, body, useCache, headers);
 
-    protected async Task<TResult> PutAsync<TResult>(string query, object body, bool useCache = true) => await SendAsync<TResult>(query, HttpMethod.Put, body, useCache);
+    protected async Task<TResult> PutAsync<TResult>(string query, object body, bool useCache = true, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Put, body, useCache, headers);
 }
