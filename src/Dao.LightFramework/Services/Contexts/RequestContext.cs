@@ -37,6 +37,8 @@ public class RequestContext : IRequestContext
             UserId = claims.GetClaim(Claims.Subject) ?? string.Empty;
             User = claims.GetClaim(Claims.Username) ?? claims.GetClaim(Claims.Name) ?? string.Empty;
             Operator = claims.GetClaim("operator");
+            Domain = claims.GetClaim("domain") ?? string.Empty;
+            Site = claims.GetClaim("site") ?? string.Empty;
             lang = claims.GetClaim(nameof(lang));
             if (!string.IsNullOrWhiteSpace(lang))
                 Language = lang;

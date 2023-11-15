@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using Dao.LightFramework.Traces;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -10,19 +11,13 @@ public static class Extensions
 {
     #region CheckNull
 
-    public static void CheckNull(this object source, string name)
-    {
-        if (source == null)
-            throw new ArgumentNullException(name);
-    }
+    public static void CheckNull(this object source, [CallerArgumentExpression(nameof(source))] string name = null) =>
+        ArgumentNullException.ThrowIfNull(source, name);
 
-    public static void CheckNull(this string source, string name)
-    {
-        if (string.IsNullOrWhiteSpace(source))
-            throw new ArgumentNullException(name);
-    }
+    public static void CheckNull(this string source, [CallerArgumentExpression(nameof(source))] string name = null) =>
+        ArgumentException.ThrowIfNullOrEmpty(source, name);
 
-    public static void CheckNull<T>(this IEnumerable<T> source, string name)
+    public static void CheckNull<T>(this IEnumerable<T> source, [CallerArgumentExpression(nameof(source))] string name = null)
     {
         if (source.IsNullOrEmpty())
             throw new ArgumentNullException(name);
@@ -258,6 +253,38 @@ public static class Extensions
             || source.EqualsIgnoreCase("1")
             || source.EqualsIgnoreCase("yes")
             || source.EqualsIgnoreCase("y"));
+
+    public static string Coalesce(this string first, params string[] args)
+    {
+        if (!string.IsNullOrWhiteSpace(first) || args == null || args.Length == 0)
+            return first;
+
+        var notNull = first;
+        return args.FirstOrDefault(w =>
+        {
+            if (notNull == null && w != null)
+                notNull = w;
+            return !string.IsNullOrWhiteSpace(w);
+        }) ?? notNull;
+    }
+
+    public static string Coalesce(this string first, params Func<string>[] funcs)
+    {
+        if (!string.IsNullOrWhiteSpace(first) || funcs == null || funcs.Length == 0)
+            return first;
+
+        var notNull = first;
+        foreach (var func in funcs)
+        {
+            var item = func();
+            if (notNull == null && item != null)
+                notNull = item;
+            if (!string.IsNullOrWhiteSpace(item))
+                return item;
+        }
+
+        return notNull;
+    }
 
     #endregion
 
