@@ -353,6 +353,50 @@ public static class Extensions
                 ? 1
                 : 0);
 
+    // 0-Year, 1-Month, 2-Week, 3-Day
+    public static int? GetAge(this DateTime? birthDate, DateTime? now, out int unit, int gap = 2)
+    {
+        if (gap < 0)
+            gap = 0;
+
+        unit = 0;
+        if (birthDate == null || now == null || now < birthDate)
+            return null;
+
+        var diffYears = now.Value.Year - birthDate.Value.Year;
+        var diffMonths = now.Value.Month - birthDate.Value.Month;
+        var diffDays = now.Value.Day - birthDate.Value.Day;
+
+        var years = diffYears;
+        if (years > 0 && (diffMonths < 0 || (diffMonths == 0 && diffDays < 0)))
+            years--;
+        if (years >= gap)
+        {
+            unit = 0;
+            return years;
+        }
+
+        var months = diffYears * 12 + diffMonths;
+        if (months > 0 && diffDays < 0)
+            months--;
+        if (months >= gap)
+        {
+            unit = 1;
+            return months;
+        }
+
+        var days = (int)now.Value.Subtract(birthDate.Value).TotalDays;
+        var weeks = days / 7;
+        if (weeks >= gap)
+        {
+            unit = 2;
+            return weeks;
+        }
+
+        unit = 3;
+        return days;
+    }
+
     public static TimeSpan ToTimeSpan(this string source, TimeSpan defaultValue = new()) =>
         string.IsNullOrWhiteSpace(source)
         || (!TimeSpan.TryParseExact(source, @"hh\:mm", null, out var result) && !TimeSpan.TryParseExact(source, @"hh\:mm\:ss", null, out result))
@@ -380,6 +424,16 @@ public static class Extensions
             return default;
         }
     }
+
+    public static bool In<T>(this T source, IEqualityComparer<T> comparer, params T[] args) => !args.IsNullOrEmpty() && args.Contains(source, comparer);
+
+    public static bool In<T>(this T source, params T[] args) => source.In(null, args);
+
+    public static bool In(this string source, StringComparer comparer, params string[] args) => source.In<string>(comparer, args);
+
+    public static bool In(this string source, params string[] args) => source.In(StringComparer.Ordinal, args);
+
+    public static bool InIgnoreCase(this string source, params string[] args) => source.In(StringComparer.OrdinalIgnoreCase, args);
 
     #endregion
 }
