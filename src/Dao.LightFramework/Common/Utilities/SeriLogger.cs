@@ -7,6 +7,15 @@ namespace Dao.LightFramework.Common.Utilities;
 public class SeriLoggerSetting
 {
     public static Func<string, ILogger> CreateLogger { get; set; }
+
+    public static LoggerConfiguration CreateDefaultConfiguration(string serviceName) =>
+        new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
+            .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: 168);
+
+    public static ILogger CreateDefaultLogger(string serviceName) =>
+        CreateDefaultConfiguration(serviceName).CreateLogger();
 }
 
 public class SeriLogger<TService>
@@ -18,11 +27,7 @@ public class SeriLogger<TService>
         var serviceName = typeof(TService).Name;
         var instance = SeriLoggerSetting.CreateLogger != null
             ? SeriLoggerSetting.CreateLogger(serviceName)
-            : new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
-                .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: 168)
-                .CreateLogger();
+            : SeriLoggerSetting.CreateDefaultLogger(serviceName);
         logger = instance.ForContext(Constants.SourceContextPropertyName, serviceName);
     }
 
