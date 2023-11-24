@@ -11,10 +11,12 @@ namespace Dao.LightFramework.Common.Attributes;
 
 public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
 {
+    public XApiKeyAttribute(params string[] tokenClaimKeys) => TokenClaimKeys = tokenClaimKeys;
+
     public string HeaderKey { get; set; } = "X-API-KEY";
     public string ParameterKey { get; set; } = "apiKey";
     public string ConfigKey { get; set; } = "ApiKey";
-    public string OperatorKey { get; set; }
+    public string[] TokenClaimKeys { get; set; }
 
     public async Task<object> OnActionExecutingAsync(ActionExecutingContext executingContext, IServiceProvider serviceProvider)
     {
@@ -59,11 +61,14 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
                 throw new UnauthorizedAccessException("ApiKey not match.");
 
             var parameters = new Parameters();
-            if (!string.IsNullOrWhiteSpace(OperatorKey))
+            if (!TokenClaimKeys.IsNullOrEmpty())
             {
-                var opt = GetQueryString(OperatorKey, query, args).FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
-                if (!string.IsNullOrWhiteSpace(opt))
-                    parameters.Add("Operator", opt);
+                foreach (var key in TokenClaimKeys)
+                {
+                    var value = GetQueryString(key, query, args).FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
+                    if (!string.IsNullOrWhiteSpace(value))
+                        parameters.Add(key, value);
+                }
             }
 
             token = await authenticator.GenerateToken(null, null, parameters);
