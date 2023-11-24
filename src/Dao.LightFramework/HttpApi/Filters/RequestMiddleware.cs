@@ -10,7 +10,7 @@ public class RequestMiddleware
 
     public RequestMiddleware(RequestDelegate next) => this.next = next;
 
-    public async Task InvokeAsync(HttpContext httpContext)
+    public async Task InvokeAsync(HttpContext httpContext, IServiceProvider serviceProvider)
     {
         var method = httpContext.Request.Method;
         var ignore = method.EqualsIgnoreCase("OPTIONS") || method.EqualsIgnoreCase("HEAD") || method.EqualsIgnoreCase("TRACE");
@@ -25,7 +25,7 @@ public class RequestMiddleware
 
                 foreach (var middleware in middlewares)
                 {
-                    middleware.State = await middleware.Middleware.OnExecutingAsync(httpContext);
+                    middleware.State = await middleware.Middleware.OnExecutingAsync(httpContext, serviceProvider);
                     if (httpContext.Response.HasStarted)
                         return;
                 }
@@ -38,7 +38,7 @@ public class RequestMiddleware
         {
             foreach (var middleware in ((IList<MiddlewareState>)middlewares).Reverse())
             {
-                await middleware.Middleware.OnExecutedAsync(httpContext, middleware.State);
+                await middleware.Middleware.OnExecutedAsync(httpContext, serviceProvider, middleware.State);
             }
         }
     }
