@@ -146,8 +146,8 @@ public static class DependencyInjectionConfig
             return services;
 
         var connectionString = getConnectionString(configuration);
-        services.AddDbContext<DbContext, TContext>(options => options.UseSqlServer(connectionString));
-        services.AddDbContext<TContext>(options => options.UseSqlServer(connectionString));
+        services.AddDbContext<DbContext, TContext>(options => options.UseSqlServer(connectionString).LogTo(s => Trace.WriteLine(s)));
+        services.AddDbContext<TContext>(options => options.UseSqlServer(connectionString).LogTo(s => Trace.WriteLine(s)));
         services.AddScoped<DbContext, TContext>();
         services.AddScoped<TContext>();
         LinqToDBForEFTools.Initialize();

@@ -261,34 +261,29 @@ public class LockedDbRepository<TEntity> : DbRepository<TEntity>, ILockedDbRepos
             if (createEntity == null)
                 return null;
 
-            using (var scope = new TransactionScope(TransactionScopeOption.Suppress, TransactionManager.MaximumTimeout, TransactionScopeAsyncFlowOption.Enabled))
+            await TransactionHelper.ScopeAsync(async () => await ServiceProvider.ScopeAsync(async svc =>
             {
-                await ServiceProvider.ScopeAsync(async svc =>
+                await using var context = svc.GetRequiredService<Microsoft.EntityFrameworkCore.DbContext>();
+                var requireSave = true;
+                if (entity == null)
                 {
-                    await using var context = svc.GetRequiredService<Microsoft.EntityFrameworkCore.DbContext>();
-                    var requireSave = true;
-                    if (entity == null)
-                    {
-                        entity = createEntity();
-                        context.Set<TEntity>().Add(entity);
+                    entity = createEntity();
+                    context.Set<TEntity>().Add(entity);
 
-                        if (onCreating != null)
-                            await onCreating(context, entity);
-                    }
-                    else
-                    {
-                        requireSave = await onUpdating(context, entity);
-                        if (requireSave && asNoTracking)
-                            context.Update(entity);
-                    }
+                    if (onCreating != null)
+                        await onCreating(context, entity);
+                }
+                else
+                {
+                    requireSave = await onUpdating(context, entity);
+                    if (requireSave && asNoTracking)
+                        context.Update(entity);
+                }
 
-                    if (requireSave)
-                        await context.SaveChangesAsync();
-                    return true;
-                });
-
-                scope.Complete();
-            }
+                if (requireSave)
+                    await context.SaveChangesAsync();
+                return true;
+            }), TransactionScopeOption.Suppress);
 
             entity = await query.FirstOrDefaultFromCacheAsync(asNoTracking, cacheKeys);
             return entity;
