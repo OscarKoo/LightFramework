@@ -2,6 +2,7 @@
 
 namespace Dao.LightFramework.Common.Attributes;
 
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class ReadRequestBodyAttribute : Attribute, IMiddlewareAttribute
 {
     public Task<object> OnExecutingAsync(HttpContext httpContext, IServiceProvider serviceProvider)

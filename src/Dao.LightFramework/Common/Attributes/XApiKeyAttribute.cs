@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Dao.LightFramework.Common.Attributes;
 
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
 {
     public XApiKeyAttribute(params string[] tokenClaimKeys) => TokenClaimKeys = tokenClaimKeys;
