@@ -1,5 +1,6 @@
 ﻿namespace Dao.LightFramework.Common.Attributes;
 
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class DtoOfAttribute : Attribute
 {
     public DtoOfAttribute(Type entityType, params string[] ignoreProperties)
@@ -12,7 +13,6 @@ public class DtoOfAttribute : Attribute
     public string[] IgnoreProperties { get; set; }
 }
 
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class DtoOfAttribute<TEntity> : DtoOfAttribute
 {
     public DtoOfAttribute(params string[] ignoreProperties) : base(typeof(TEntity), ignoreProperties) { }

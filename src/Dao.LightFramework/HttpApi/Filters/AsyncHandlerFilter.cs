@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text;
 using Dao.LightFramework.Common.Attributes;
 using Dao.LightFramework.Common.Utilities;
@@ -26,7 +27,6 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
             var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;
             var filters = new List<FilterState>();
-            var existing = new HashSet<Type>();
             var sw = new StopWatch();
             if (controllerAction != null)
             {
@@ -37,8 +37,8 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 TraceContext.SpanId.Renew(request, 1).Degrade();
 
                 sw.Start();
-                filters.AddRange(GetFilterStates(controllerAction.MethodInfo, existing, true));
-                filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo, existing, false));
+                filters.AddRange(GetFilterStates(controllerAction.MethodInfo));
+                filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo));
 
                 foreach (var filter in filters)
                 {
@@ -78,18 +78,12 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         }
     }
 
-    static IEnumerable<FilterState> GetFilterStates(MemberInfo element, ISet<Type> existing, bool addIfExits)
-    {
-        var type = typeof(IAsyncActionFilterAttribute);
-        return element.CustomAttributes.Where(w =>
-        {
-            if (!type.IsAssignableFrom(w.AttributeType)
-                || (!addIfExits && existing.Contains(w.AttributeType)))
-                return false;
+    static readonly ConcurrentDictionary<MemberInfo, Lazy<IAsyncActionFilterAttribute[]>> attributes = new();
 
-            existing.Add(w.AttributeType);
-            return true;
-        }).Select(s => new FilterState((IAsyncActionFilterAttribute)element.GetCustomAttribute(s.AttributeType)));
+    static IEnumerable<FilterState> GetFilterStates(MemberInfo element)
+    {
+        var attrs = attributes.GetOrAdd(element, k => new Lazy<IAsyncActionFilterAttribute[]>(() => k.GetCustomAttributes(true).OfType<IAsyncActionFilterAttribute>().ToArray())).Value;
+        return attrs.Select(s => new FilterState(s));
     }
 }
 

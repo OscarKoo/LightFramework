@@ -195,6 +195,8 @@ SaveChangesAsync cost: {cost2};
                     await onSaving.OnSaving(this, entry, this.requestContext, this.serviceProvider);
             }
 
+            if (!QueryCacheManager.IsEnabled)
+                continue;
             var cacheKeys = ((Entity)entry.Entity).CacheKeys;
             if (cacheKeys.IsNullOrEmpty())
                 continue;
