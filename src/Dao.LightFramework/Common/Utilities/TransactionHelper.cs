@@ -17,12 +17,11 @@ public static class TransactionHelper
 
     public static T Scope<T>(Func<bool> requireTransaction, Func<T> func, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
-        T result = default;
         if (func == null)
-            return result;
+            throw new ArgumentNullException(nameof(func));
 
-        using var scope = requireTransaction?.Invoke() ?? true ? Create(scopeOption) : null;
-        result = func();
+        using var scope = requireTransaction == null || requireTransaction() ? Create(scopeOption) : null;
+        var result = func();
         scope?.Complete();
         return result;
     }
@@ -32,7 +31,7 @@ public static class TransactionHelper
     public static void Scope(Func<bool> requireTransaction, Action action, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
         if (action == null)
-            return;
+            throw new ArgumentNullException(nameof(action));
 
         Scope(requireTransaction, () =>
         {
@@ -49,12 +48,11 @@ public static class TransactionHelper
 
     public static async Task<T> ScopeAsync<T>(Func<bool> requireTransaction, Func<Task<T>> funcAsync, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
-        T result = default;
         if (funcAsync == null)
-            return result;
+            throw new ArgumentNullException(nameof(funcAsync));
 
-        using var scope = requireTransaction?.Invoke() ?? true ? Create(scopeOption, TransactionScopeAsyncFlowOption.Enabled) : null;
-        result = await funcAsync();
+        using var scope = requireTransaction == null || requireTransaction() ? Create(scopeOption, TransactionScopeAsyncFlowOption.Enabled) : null;
+        var result = await funcAsync();
         scope?.Complete();
         return result;
     }
@@ -64,7 +62,7 @@ public static class TransactionHelper
     public static async Task ScopeAsync(Func<bool> requireTransaction, Func<Task> actionAsync, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
         if (actionAsync == null)
-            return;
+            throw new ArgumentNullException(nameof(actionAsync));
 
         await ScopeAsync(requireTransaction, async () =>
         {

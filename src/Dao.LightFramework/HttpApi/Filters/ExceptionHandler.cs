@@ -9,8 +9,6 @@ namespace Dao.LightFramework.HttpApi.Filters;
 
 public class ExceptionHandler : ExceptionFilterAttribute
 {
-    static readonly string TypeError = ExceptionType.Error.ToString();
-
     public override void OnException(ExceptionContext context)
     {
         if (context.Exception is ConfirmException confirm)
@@ -20,17 +18,20 @@ public class ExceptionHandler : ExceptionFilterAttribute
             return;
         }
 
+        var isWarning = context.Exception is WarningException;
         context.HttpContext.Response.ContentType = "application/json";
         context.HttpContext.Response.StatusCode = context.Exception is BadHttpRequestException { StatusCode: > 0 } bhrEx
             ? bhrEx.StatusCode
-            : (int)HttpStatusCode.BadRequest;
+            : isWarning
+                ? (int)HttpStatusCode.BadRequest
+                : (int)HttpStatusCode.InternalServerError;
 
         var result = new ExceptionResult
         {
-            Type = (context.Exception is WarningException ? ExceptionType.Warning : ExceptionType.Error).ToString(),
+            Type = (isWarning ? ExceptionType.Warning : ExceptionType.Error).ToString(),
             Message = context.Exception.GetBaseException().Message
         };
-        if (result.Type == TypeError)
+        if (!isWarning)
             StaticLogger.LogError(context.Exception, result.Message);
 
         context.Result = new JsonResult(result);
