@@ -22,7 +22,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         try
         {
             var request = context.HttpContext.Request;
-            sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
+            sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
 
             var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;

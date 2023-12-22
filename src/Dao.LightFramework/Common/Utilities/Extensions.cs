@@ -341,6 +341,27 @@ public static class Extensions
         }
     }
 
+    public static bool IsJson(this string source, out JToken json)
+    {
+        json = null;
+        if (string.IsNullOrWhiteSpace(source = source?.Trim())
+            || ((!source.StartsWith("{", StringComparison.Ordinal) || !source.EndsWith("}", StringComparison.Ordinal))
+                && (!source.StartsWith("[", StringComparison.Ordinal) || !source.EndsWith("]", StringComparison.Ordinal))))
+        {
+            return false;
+        }
+
+        try
+        {
+            json = JToken.Parse(source);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            return false;
+        }
+    }
+
     #endregion
 
     #region DateTime

@@ -23,7 +23,7 @@ public static class HttpClientExtensions
 
         var url = (client.BaseAddress?.ToString()).JoinUri(query);
         var sb = new StringBuilder();
-        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {url}");
+        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {method.ToString()} {url}");
 
         var request = new HttpRequestMessage(method, uri);
         if (method != HttpMethod.Get && content != null)
