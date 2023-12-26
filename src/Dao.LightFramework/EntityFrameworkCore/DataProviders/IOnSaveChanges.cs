@@ -1,19 +1,22 @@
 ﻿using Dao.LightFramework.Domain.Entities;
-using Dao.LightFramework.Services.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
-public interface IOnSaveChanges
+public interface IPriority
 {
-    Task<object> OnSaving(DbContext context, IList<EntityEntry> entries, IRequestContext requestContext, IServiceProvider serviceProvider);
-    Task OnSaved(DbContext context, int result, IRequestContext requestContext, IServiceProvider serviceProvider, object state);
+    int Priority { get; }
 }
 
-public interface IOnSavingEntity
+public interface IOnSaveChanges : IPriority
 {
-    Task OnSaving(DbContext context, EntityEntry entry, IRequestContext requestContext, IServiceProvider serviceProvider);
+    Task<int> OnSave(IServiceProvider serviceProvider, DbContext context, Func<Task<int>> next);
+}
+
+public interface IOnSavingEntity : IPriority
+{
+    Task<int> OnSaving(IServiceProvider serviceProvider, DbContext context, EntityEntry entry, Func<Task<int>> next);
 }
 
 public interface IOnSavingEntity<TEntity> : IOnSavingEntity where TEntity : Entity { }

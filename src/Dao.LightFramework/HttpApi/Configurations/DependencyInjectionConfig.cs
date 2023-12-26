@@ -197,7 +197,7 @@ public static class DependencyInjectionConfig
 
             if (!isGenericReg)
             {
-                DbContextSetting.HasOnSavingEntity = true;
+                DbContextSetting.HasOnSavingAnyEntity = true;
             }
             else
             {
@@ -205,7 +205,7 @@ public static class DependencyInjectionConfig
                 if (!isGenericInterface(iReg))
                     tSaving = iReg.GetInterfaces().First(isGenericInterface);
                 var entityType = tSaving.GenericTypeArguments[0];
-                DbContextSetting.SavingEntityTypes.Add(entityType);
+                DbContextSetting.SavingSpecificEntityTypes.Add(entityType);
             }
         });
         services.RegisterAll(typeof(IOnSaveChanges), assemblies, false, (iReg, imp) =>

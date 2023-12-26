@@ -18,8 +18,8 @@ namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 public static class DbContextSetting
 {
     internal static bool HasOnSaveChanges { get; set; }
-    internal static bool HasOnSavingEntity { get; set; }
-    internal static HashSet<Type> SavingEntityTypes { get; set; } = new();
+    internal static bool HasOnSavingAnyEntity { get; set; }
+    internal static HashSet<Type> SavingSpecificEntityTypes { get; set; } = new();
     public static Assembly ConfigurationsAssembly { get; set; }
     public static string Collation { get; set; }
 }
@@ -93,6 +93,115 @@ public class EFContext : DbContext
 
     #region SaveChangesAsync
 
+    #region OnSaving
+
+    Func<Task<int>> BuildSavingSpecificEntity(EntityEntry entry, Func<Task<int>> next)
+    {
+        var entityType = entry.Metadata.ClrType;
+        if (!DbContextSetting.SavingSpecificEntityTypes.Contains(entityType))
+            return next;
+
+        var savingEntities = this.serviceProvider.GetServices(typeof(IOnSavingEntity<>).MakeGenericType(entityType)).Cast<IOnSavingEntity>().OrderByDescending(o => o.Priority).ToList();
+        if (savingEntities.Count <= 0)
+            return next;
+
+        for (var i = savingEntities.Count - 1; i >= 0; i--)
+        {
+            var onSavingEntity = savingEntities[i];
+            var nextFunc = next;
+            next = async () => await onSavingEntity.OnSaving(this.serviceProvider, this, entry, nextFunc);
+        }
+
+        return next;
+    }
+
+    Func<Task<int>> BuildSavingAnyEntity(EntityEntry entry, Func<Task<int>> next)
+    {
+        if (!DbContextSetting.HasOnSavingAnyEntity)
+            return next;
+
+        var savings = this.serviceProvider.GetServices<IOnSavingEntity>().OrderByDescending(o => o).ToList();
+        if (savings.Count <= 0)
+            return next;
+
+        for (var i = savings.Count - 1; i >= 0; i--)
+        {
+            var onSaving = savings[i];
+            var nextFunc = next;
+            next = async () => await onSaving.OnSaving(this.serviceProvider, this, entry, nextFunc);
+        }
+
+        return next;
+    }
+
+    Func<Task<int>> BuildSavingEntities(ISet<string> expiredTags, Func<Task<int>> next)
+    {
+        foreach (var entry in ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            if (entry.State != EntityState.Deleted)
+                this.requestContext.FillEntity(entry.Entity);
+
+            next = BuildSavingSpecificEntity(entry, next);
+            next = BuildSavingAnyEntity(entry, next);
+
+            if (!QueryCacheManager.IsEnabled)
+                continue;
+            var cacheKeys = ((Entity)entry.Entity).CacheKeys;
+            if (cacheKeys.IsNullOrEmpty())
+                continue;
+
+            foreach (var cacheKey in cacheKeys)
+            {
+                expiredTags.Add(cacheKey);
+            }
+        }
+
+        return next;
+    }
+
+    Func<Task<int>> BuildSaveChanges(Func<Task<int>> next)
+    {
+        if (!DbContextSetting.HasOnSaveChanges)
+            return next;
+
+        var saves = this.serviceProvider.GetServices<IOnSaveChanges>().OrderByDescending(o => o.Priority).ToList();
+        if (saves.Count <= 0)
+            return next;
+
+        for (var i = saves.Count - 1; i >= 0; i--)
+        {
+            var onSave = saves[i];
+            var nextFunc = next;
+            next = async () => await onSave.OnSave(this.serviceProvider, this, nextFunc);
+        }
+
+        return next;
+    }
+
+    #endregion
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
+    {
+        var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var next = BuildSavingEntities(expiredTags, async () => await base.SaveChangesAsync(cancellationToken));
+        next = BuildSaveChanges(next);
+
+        var result = await next();
+
+        if (expiredTags.Count > 0)
+        {
+            foreach (var tag in expiredTags)
+            {
+                QueryCacheManager.ExpireTag(tag);
+            }
+
+            expiredTags.Clear();
+        }
+
+        this.EntityDtoTracker.MapToDtos();
+        return result;
+    }
+
     //IEnumerable<string> BeforeChanges()
     //{
     //    var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -113,6 +222,7 @@ public class EFContext : DbContext
     //    return expiredTags.ToList();
     //}
 
+    /*
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
 #if DEBUG
@@ -209,6 +319,7 @@ SaveChangesAsync cost: {cost2};
 
         onSavings.Clear();
     }
+    */
 
     #endregion
 }
