@@ -25,9 +25,21 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
 
-            var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;
-            var filters = new List<FilterState>();
+            double nextCost = 0;
+            ActionExecutionDelegate nextFunc = async () =>
+            {
+                var sw = new StopWatch();
+                sw.Start();
+                var result = await next();
+                sw.Stop();
+                nextCost = sw.LastStopNS;
+                return result;
+            };
+
             var sw = new StopWatch();
+            sw.Start();
+
+            var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;
             if (controllerAction != null)
             {
                 var info = TraceContext.Info.Renew();
@@ -36,39 +48,19 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 TraceContext.TraceId.Renew(request);
                 TraceContext.SpanId.Renew(request, 1).Degrade();
 
-                sw.Start();
-                filters.AddRange(GetFilterStates(controllerAction.MethodInfo));
-                filters.AddRange(GetFilterStates(controllerAction.ControllerTypeInfo));
-
-                foreach (var filter in filters)
-                {
-                    filter.State = await filter.Filter.OnActionExecutingAsync(context, this.serviceProvider);
-                    if (context.Result != null)
-                        return;
-                }
-
-                sw.Stop();
+                nextFunc = GetFilters(controllerAction.MethodInfo).Concat(GetFilters(controllerAction.ControllerTypeInfo)).Aggregate(nextFunc, (current, filter) => BuildNext(filter, context, this.serviceProvider, current));
             }
 
-            sw.Start();
-            var result = await next();
-            var end = sw.Stop();
-            var exec = sw.LastStopNS;
+            var result = await nextFunc();
+            sw.Stop();
 
             if (result.Result is ObjectResult obj)
                 sb.AppendLine($"Result: {obj.Value.ToJson()}");
-            sb.AppendLine($"Response: Cost {end}");
+            sb.AppendLine($"Response: Cost {nextCost}");
 
             if (controllerAction != null)
             {
-                sw.Start();
-                foreach (var filter in ((IList<FilterState>)filters).Reverse())
-                {
-                    await filter.Filter.OnActionExecutedAsync(context, this.serviceProvider, result, filter.State);
-                }
-
-                sw.Stop();
-                sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - exec)}");
+                sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - nextCost)}");
             }
         }
         finally
@@ -78,19 +70,11 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         }
     }
 
-    static readonly ConcurrentDictionary<MemberInfo, Lazy<IAsyncActionFilterAttribute[]>> attributes = new();
+    static readonly ConcurrentDictionary<MemberInfo, Lazy<IAsyncActionFilterAttribute[]>> filters = new();
 
-    static IEnumerable<FilterState> GetFilterStates(MemberInfo element)
-    {
-        var attrs = attributes.GetOrAdd(element, k => new Lazy<IAsyncActionFilterAttribute[]>(() => k.GetCustomAttributes(true).OfType<IAsyncActionFilterAttribute>().ToArray())).Value;
-        return attrs.Select(s => new FilterState(s));
-    }
-}
+    static IEnumerable<IAsyncActionFilterAttribute> GetFilters(MemberInfo element) =>
+        filters.GetOrAdd(element, k => new Lazy<IAsyncActionFilterAttribute[]>(() => k.GetCustomAttributes(true).OfType<IAsyncActionFilterAttribute>().ToArray())).Value;
 
-sealed class FilterState
-{
-    internal FilterState(IAsyncActionFilterAttribute filter) => Filter = filter;
-
-    internal IAsyncActionFilterAttribute Filter { get; set; }
-    internal object State { get; set; }
+    static ActionExecutionDelegate BuildNext(IAsyncActionFilterAttribute filter, ActionExecutingContext context, IServiceProvider serviceProvider, ActionExecutionDelegate next) =>
+        async () => await filter.OnActionExecutionAsync(context, serviceProvider, next);
 }

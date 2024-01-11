@@ -4,6 +4,5 @@ namespace Dao.LightFramework.Common.Attributes;
 
 public interface IAsyncActionFilterAttribute
 {
-    Task<object> OnActionExecutingAsync(ActionExecutingContext executingContext, IServiceProvider serviceProvider);
-    Task OnActionExecutedAsync(ActionExecutingContext executingContext, IServiceProvider serviceProvider, ActionExecutedContext executedContext, object state);
+    Task<ActionExecutedContext> OnActionExecutionAsync(ActionExecutingContext context, IServiceProvider serviceProvider, ActionExecutionDelegate next);
 }

@@ -19,14 +19,14 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
     public string ConfigKey { get; set; } = "ApiKey";
     public string[] TokenClaimKeys { get; set; }
 
-    public async Task<object> OnActionExecutingAsync(ActionExecutingContext executingContext, IServiceProvider serviceProvider)
+    public async Task<ActionExecutedContext> OnActionExecutionAsync(ActionExecutingContext context, IServiceProvider serviceProvider, ActionExecutionDelegate next)
     {
         var sw = new StopWatch();
         sw.Start();
 
         var authenticator = serviceProvider.GetRequiredService<IAuthenticator>();
 
-        var request = executingContext.HttpContext.Request;
+        var request = context.HttpContext.Request;
         var headers = request.Headers;
         var token = headers.Authorization.FirstOrDefault();
         var isValid = false;
@@ -43,7 +43,7 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
         if (!isValid)
         {
             var query = request.Query;
-            var args = executingContext.ActionArguments.JsonCopy() as JToken;
+            var args = context.ActionArguments.JsonCopy() as JToken;
 
             var apiKeys = (string.IsNullOrWhiteSpace(HeaderKey) ? Enumerable.Empty<string>() : headers[HeaderKey])
                 .Concat(GetQueryString(ParameterKey, query, args))
@@ -81,15 +81,14 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
 
         StaticLogger.LogInformation(@$"XApiKey validation: {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}
 Cost: {sw.Stop()}");
-        return null;
+
+        return await next();
     }
 
     static IEnumerable<string> GetQueryString(string name, IQueryCollection query, JToken args) =>
         string.IsNullOrWhiteSpace(name)
             ? Array.Empty<string>()
             : query[name].Concat(args.GetValues<string>(name, StringComparison.OrdinalIgnoreCase));
-
-    public Task OnActionExecutedAsync(ActionExecutingContext executingContext, IServiceProvider serviceProvider, ActionExecutedContext executedContext, object state) => Task.CompletedTask;
 }
 
 public interface IAuthenticator
