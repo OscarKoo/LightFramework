@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Domain.Entities;
@@ -182,8 +183,23 @@ public class EFContext : DbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
+        double nextCost = 0;
+
+        async Task<int> Save()
+        {
+            var exec = new StopWatch();
+            exec.Start();
+            var result = await base.SaveChangesAsync(cancellationToken);
+            exec.Stop();
+            nextCost = exec.LastStopNS;
+            return result;
+        }
+
+        var sw = new StopWatch();
+        sw.Start();
+
         var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var next = BuildSavingEntities(expiredTags, async () => await base.SaveChangesAsync(cancellationToken));
+        var next = BuildSavingEntities(expiredTags, Save);
         next = BuildSaveChanges(next);
 
         var result = await next();
@@ -199,6 +215,13 @@ public class EFContext : DbContext
         }
 
         this.EntityDtoTracker.MapToDtos();
+        sw.Stop();
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"SaveChangesAsync: Cost {sw.Format(nextCost)}");
+        sb.AppendLine($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
+        StaticLogger.LogInformation(sb.ToString());
+
         return result;
     }
 

@@ -18,23 +18,24 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
+        var hasFilter = false;
+        double nextCost = 0;
+        ActionExecutionDelegate nextFunc = async () =>
+        {
+            var exec = new StopWatch();
+            exec.Start();
+            var result = await next();
+            exec.Stop();
+            nextCost = exec.LastStopNS;
+            return result;
+        };
+
         var sb = new StringBuilder();
         try
         {
             var request = context.HttpContext.Request;
             sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
-
-            double nextCost = 0;
-            ActionExecutionDelegate nextFunc = async () =>
-            {
-                var sw = new StopWatch();
-                sw.Start();
-                var result = await next();
-                sw.Stop();
-                nextCost = sw.LastStopNS;
-                return result;
-            };
 
             var sw = new StopWatch();
             sw.Start();
@@ -48,7 +49,11 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 TraceContext.TraceId.Renew(request);
                 TraceContext.SpanId.Renew(request, 1).Degrade();
 
-                nextFunc = GetFilters(controllerAction.MethodInfo).Concat(GetFilters(controllerAction.ControllerTypeInfo)).Aggregate(nextFunc, (current, filter) => BuildNext(filter, context, this.serviceProvider, current));
+                foreach (var filter in GetFilters(controllerAction.MethodInfo).Concat(GetFilters(controllerAction.ControllerTypeInfo)))
+                {
+                    nextFunc = BuildNext(filter, context, this.serviceProvider, nextFunc);
+                    hasFilter = true;
+                }
             }
 
             var result = await nextFunc();
@@ -56,12 +61,9 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
             if (result.Result is ObjectResult obj)
                 sb.AppendLine($"Result: {obj.Value.ToJson()}");
-            sb.AppendLine($"Response: Cost {nextCost}");
-
-            if (controllerAction != null)
-            {
+            sb.AppendLine($"Response: Cost {sw.Format(nextCost)}");
+            if (hasFilter)
                 sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - nextCost)}");
-            }
         }
         finally
         {

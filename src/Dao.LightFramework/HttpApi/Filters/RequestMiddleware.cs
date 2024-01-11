@@ -12,9 +12,6 @@ public class RequestMiddleware
 
     public async Task InvokeAsync(HttpContext httpContext, IServiceProvider serviceProvider)
     {
-        var method = httpContext.Request.Method;
-        var ignore = method.EqualsIgnoreCase("OPTIONS") || method.EqualsIgnoreCase("HEAD") || method.EqualsIgnoreCase("TRACE");
-
         RequestDelegate nextFunc = async ctx =>
         {
             if (ctx.Response.HasStarted)
@@ -22,6 +19,9 @@ public class RequestMiddleware
 
             await this.next(ctx);
         };
+
+        var method = httpContext.Request.Method;
+        var ignore = method.EqualsIgnoreCase("OPTIONS") || method.EqualsIgnoreCase("HEAD") || method.EqualsIgnoreCase("TRACE");
 
         if (!ignore)
         {
