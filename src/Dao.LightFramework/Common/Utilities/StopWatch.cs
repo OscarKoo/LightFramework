@@ -17,7 +17,7 @@ public class StopWatch
     public string Stop()
     {
         this.sw.Stop();
-        LastStopNS = 1000000000 * (double)this.sw.ElapsedTicks / Stopwatch.Frequency;
+        LastStopNS = this.sw.ElapsedNanoseconds();
         TotalNS += LastStopNS;
         return Format(LastStopNS);
     }
@@ -26,7 +26,16 @@ public class StopWatch
 
     public string Format(double elapsed)
     {
-        var ms = Math.Round(elapsed / 1000000, 1);
-        return $"{(ms > this.attention ? "[ATTENTION] " : "")}{ms} ms, {Math.Round(elapsed / 1000, 1)} us, {Math.Round(elapsed, 1)} ns";
+        var ms = this.sw.RoundMilliseconds(elapsed);
+        return $"{(ms > this.attention ? "[ATTENTION] " : "")}{ms} ms, {this.sw.RoundMicroseconds(elapsed)} us, {this.sw.RoundNanoseconds(elapsed)} ns";
     }
+}
+
+public static class StopwatchExtensions
+{
+    public static double ElapsedNanoseconds(this Stopwatch sw) => 1000000000 * (double)sw.ElapsedTicks / Stopwatch.Frequency;
+
+    public static double RoundNanoseconds(this Stopwatch sw, double? nanoseconds = null, int digits = 1) => Math.Round(nanoseconds ?? sw.ElapsedNanoseconds(), digits);
+    public static double RoundMicroseconds(this Stopwatch sw, double? nanoseconds = null, int digits = 1) => Math.Round(nanoseconds ?? sw.ElapsedNanoseconds() / 1000, digits);
+    public static double RoundMilliseconds(this Stopwatch sw, double? nanoseconds = null, int digits = 1) => Math.Round(nanoseconds ?? sw.ElapsedNanoseconds() / 1000000, digits);
 }

@@ -120,7 +120,7 @@ public class EFContext : DbContext
         if (!DbContextSetting.HasOnSavingAnyEntity)
             return next;
 
-        var savings = this.serviceProvider.GetServices<IOnSavingEntity>().OrderByDescending(o => o).ToList();
+        var savings = this.serviceProvider.GetServices<IOnSavingEntity>().OrderByDescending(o => o.Priority).ToList();
         if (savings.Count <= 0)
             return next;
 
