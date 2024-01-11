@@ -5,11 +5,9 @@ namespace Dao.LightFramework.Common.Attributes;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class ReadRequestBodyAttribute : Attribute, IMiddlewareAttribute
 {
-    public Task<object> OnExecutingAsync(HttpContext httpContext, IServiceProvider serviceProvider)
+    public async Task OnExecutionAsync(HttpContext httpContext, IServiceProvider serviceProvider, RequestDelegate next)
     {
         httpContext.Request.EnableBuffering();
-        return Task.FromResult<object>(null);
+        await next(httpContext);
     }
-
-    public Task OnExecutedAsync(HttpContext httpContext, IServiceProvider serviceProvider, object state) => Task.CompletedTask;
 }

@@ -14,40 +14,28 @@ public class RequestMiddleware
     {
         var method = httpContext.Request.Method;
         var ignore = method.EqualsIgnoreCase("OPTIONS") || method.EqualsIgnoreCase("HEAD") || method.EqualsIgnoreCase("TRACE");
-        var middlewares = new List<MiddlewareState>();
+
+        RequestDelegate nextFunc = async ctx =>
+        {
+            if (ctx.Response.HasStarted)
+                return;
+
+            await this.next(ctx);
+        };
 
         if (!ignore)
         {
             var metadata = httpContext.GetEndpoint()?.Metadata;
             if (metadata != null)
             {
-                middlewares.AddRange(metadata.Where(w => w is IMiddlewareAttribute).Select(s => new MiddlewareState((IMiddlewareAttribute)s)));
-
-                foreach (var middleware in middlewares)
-                {
-                    middleware.State = await middleware.Middleware.OnExecutingAsync(httpContext, serviceProvider);
-                    if (httpContext.Response.HasStarted)
-                        return;
-                }
+                nextFunc = metadata.Where(w => w is IMiddlewareAttribute).Cast<IMiddlewareAttribute>()
+                    .Aggregate(nextFunc, (current, middleware) => BuildNext(middleware, serviceProvider, current));
             }
         }
 
-        await this.next(httpContext);
-
-        if (!ignore)
-        {
-            foreach (var middleware in ((IList<MiddlewareState>)middlewares).Reverse())
-            {
-                await middleware.Middleware.OnExecutedAsync(httpContext, serviceProvider, middleware.State);
-            }
-        }
+        await nextFunc(httpContext);
     }
-}
 
-sealed class MiddlewareState
-{
-    internal MiddlewareState(IMiddlewareAttribute middleware) => Middleware = middleware;
-
-    internal IMiddlewareAttribute Middleware { get; set; }
-    internal object State { get; set; }
+    static RequestDelegate BuildNext(IMiddlewareAttribute middleware, IServiceProvider serviceProvider, RequestDelegate next) =>
+        async ctx => await middleware.OnExecutionAsync(ctx, serviceProvider, next);
 }

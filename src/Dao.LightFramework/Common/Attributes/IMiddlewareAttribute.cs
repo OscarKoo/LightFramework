@@ -4,6 +4,9 @@ namespace Dao.LightFramework.Common.Attributes;
 
 public interface IMiddlewareAttribute
 {
-    Task<object> OnExecutingAsync(HttpContext httpContext, IServiceProvider serviceProvider);
-    Task OnExecutedAsync(HttpContext httpContext, IServiceProvider serviceProvider, object state);
+    /// <summary>
+    /// if (httpContext.Response.HasStarted)
+    ///     return;
+    /// </summary>
+    Task OnExecutionAsync(HttpContext httpContext, IServiceProvider serviceProvider, RequestDelegate next);
 }
