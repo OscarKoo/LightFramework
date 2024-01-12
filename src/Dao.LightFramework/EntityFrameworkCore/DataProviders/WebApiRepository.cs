@@ -52,7 +52,7 @@ public abstract class WebApiRepository<TDto> : ServiceContextServiceBase, IWebAp
 
     readonly ConcurrentDictionary<string, object> queryCache = new(StringComparer.OrdinalIgnoreCase);
 
-    protected virtual async Task<TResult> SendAsync<TResult>(string query, HttpMethod method, object body = null, bool useCache = true, IDictionary<string, string> headers = null)
+    protected virtual async Task<TResult> SendAsync<TResult>(string query, HttpMethod method, object body = null, bool useCache = false, IDictionary<string, string> headers = null)
     {
         if (!useCache)
             return await Send<TResult>(query, method, body, headers);
@@ -62,9 +62,9 @@ public abstract class WebApiRepository<TDto> : ServiceContextServiceBase, IWebAp
         return (TResult)result;
     }
 
-    protected async Task<TResult> GetAsync<TResult>(string query, bool useCache = true, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Get, useCache: useCache, headers: headers);
+    protected async Task<TResult> GetAsync<TResult>(string query, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Get, useCache: useCache, headers: headers);
 
-    protected async Task<TResult> PostAsync<TResult>(string query, object body, bool useCache = true, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Post, body, useCache, headers);
+    protected async Task<TResult> PostAsync<TResult>(string query, object body, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Post, body, useCache, headers);
 
-    protected async Task<TResult> PutAsync<TResult>(string query, object body, bool useCache = true, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Put, body, useCache, headers);
+    protected async Task<TResult> PutAsync<TResult>(string query, object body, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Put, body, useCache, headers);
 }
