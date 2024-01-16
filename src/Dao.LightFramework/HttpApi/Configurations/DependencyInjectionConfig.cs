@@ -25,7 +25,7 @@ public static class DependencyInjectionConfig
         if (setting.UseDefaultServiceContext)
             services.AddLightServiceContext();
 
-        services.AddLightDbContext<EFContext>(configuration, setting.GetConnectionString, setting.DataMigrationSetting);
+        services.AddLightDbContext<EFContext>(configuration, setting.GetConnectionString, setting.DataMigrationSetting, setting.UseQueryCache);
         return services.AddLightServices(setting.MatchedAssembly);
     }
 
@@ -139,7 +139,11 @@ public static class DependencyInjectionConfig
         return services;
     }
 
-    public static IServiceCollection AddLightDbContext<TContext>(this IServiceCollection services, IConfiguration configuration, Func<IConfiguration, string> getConnectionString, DataMigrationSetting dataMigrationSetting = null)
+    public static IServiceCollection AddLightDbContext<TContext>(this IServiceCollection services,
+        IConfiguration configuration,
+        Func<IConfiguration, string> getConnectionString,
+        DataMigrationSetting dataMigrationSetting = null,
+        bool useQueryCache = false)
         where TContext : DbContext
     {
         if (getConnectionString == null)
@@ -151,7 +155,8 @@ public static class DependencyInjectionConfig
         {
             options.UseSqlServer(connectionString)
                 //.LogTo(s => Trace.WriteLine(s))
-                .AddInterceptors(new LightInterceptor());
+                //.AddInterceptors(new LightInterceptor())
+                ;
         }
 
         services.AddDbContext<DbContext, TContext>(DBContextOptions);
@@ -159,7 +164,7 @@ public static class DependencyInjectionConfig
         services.AddScoped<DbContext, TContext>();
         services.AddScoped<TContext>();
         LinqToDBForEFTools.Initialize();
-        QueryCacheManager.IsEnabled = configuration.GetSection("UseQueryCache").Value.EqualsIgnoreCase(true.ToString());
+        QueryCacheManager.IsEnabled = useQueryCache;
         using var scope = services.BuildServiceProvider().GetService<IServiceScopeFactory>().CreateScope();
         using var context = scope.ServiceProvider.GetRequiredService<DbContext>();
         try
@@ -231,4 +236,5 @@ public class DependencyInjectionSetting
     public Func<IConfiguration, string> GetConnectionString { get; set; }
     public DataMigrationSetting DataMigrationSetting { get; set; }
     public Func<string, bool> MatchedAssembly { get; set; }
+    public bool UseQueryCache { get; set; }
 }
