@@ -4,7 +4,7 @@ using Dao.LightFramework.Services;
 
 namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
-public abstract class WebApiRepository<TDto> : ServiceContextServiceBase, IWebApiRepository<TDto>
+public abstract class WebApiRepository : ServiceContextServiceBase, IWebApiRepository
 {
     readonly string host;
     readonly IHttpClientFactory httpClientFactory;

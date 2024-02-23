@@ -1,3 +1,3 @@
 ﻿namespace Dao.LightFramework.EntityFrameworkCore.DataProviders;
 
-public interface IWebApiRepository<TDto> : IRepository { }
+public interface IWebApiRepository : IRepository { }
