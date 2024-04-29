@@ -10,7 +10,7 @@ namespace Dao.LightFramework.Common.Utilities;
 
 public static class HttpClientExtensions
 {
-    public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
+    public static async Task<TResult> SendAsync<TResult>(this HttpClient client, Func<HttpContent, Task<TResult>> onResponse, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
     {
         if (client == null)
             return default;
@@ -54,12 +54,12 @@ public static class HttpClientExtensions
         sw.Start();
 
         HttpResponseMessage response = null;
-        string result = null;
+        TResult result = default;
         string error = null;
         try
         {
             response = await client.SendAsync(request);
-            result = await response.Content.ReadAsStringAsync();
+            result = await onResponse(response.Content);
             response.EnsureSuccessStatusCode();
             return result;
         }
@@ -70,7 +70,7 @@ public static class HttpClientExtensions
         }
         finally
         {
-            sb.AppendLine($"Result: {result ?? error}");
+            sb.AppendLine($"Result: {(typeof(TResult) == typeof(string) ? result as string : null) ?? error}");
             sb.AppendLine($"Response: Cost {sw.Stop()}");
 
             if (string.IsNullOrWhiteSpace(error))
@@ -79,6 +79,9 @@ public static class HttpClientExtensions
                 StaticLogger.LogError(sb.ToString());
         }
     }
+
+    public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
+        await client.SendAsync(async resp => await resp.ReadAsStringAsync(), query, method, content, headers);
 
     public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
         await client.SendAsync(query, method, JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }), headers);

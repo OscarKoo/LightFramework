@@ -79,7 +79,7 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
             headers.Authorization = new StringValues("Bearer " + token);
         }
 
-        StaticLogger.LogInformation(@$"XApiKey validation: {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}
+        StaticLogger.LogInformation(@$"XApiKey validation: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}
 Cost: {sw.Stop()}");
 
         return await next();
