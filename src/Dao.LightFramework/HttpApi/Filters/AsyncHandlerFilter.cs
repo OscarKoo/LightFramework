@@ -5,6 +5,7 @@ using Dao.LightFramework.Common.Attributes;
 using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Services.Contexts;
 using Dao.LightFramework.Traces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -37,7 +38,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         {
             var request = context.HttpContext.Request;
             sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
-            sb.AppendLine("RequestContext: " + this.serviceProvider.GetService<IRequestContext>()?.ToJson());
+            sb.AppendLine("RequestContext: " + new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>()).ToJson());
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
 
             var sw = new StopWatch();
