@@ -55,6 +55,8 @@ public static class HttpClientExtensions
 
         HttpResponseMessage response = null;
         TResult result = default;
+        var type = typeof(TResult);
+        var isString = type == typeof(string);
         string error = null;
         try
         {
@@ -66,11 +68,11 @@ public static class HttpClientExtensions
         catch (Exception ex)
         {
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"request \"{url}\" failed, response: {result}, error: {error}", (int)(response?.StatusCode ?? 0));
+            throw new BadHttpRequestException($"request \"{url}\" failed, response: {(isString ? result as string : type.Name)}, error: {error}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {
-            sb.AppendLine($"Result: {(typeof(TResult) == typeof(string) ? result as string : null) ?? error}");
+            sb.AppendLine($"Result: {(isString ? result as string : type.Name) ?? error}");
             sb.AppendLine($"Response: Cost {sw.Stop()}");
 
             if (string.IsNullOrWhiteSpace(error))
