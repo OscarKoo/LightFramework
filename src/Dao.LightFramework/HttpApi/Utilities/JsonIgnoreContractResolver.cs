@@ -13,26 +13,11 @@ public class JsonIgnoreContractResolver : CamelCasePropertyNamesContractResolver
         var property = base.CreateProperty(member, memberSerialization);
         var type = member.DeclaringType;
 
-        if (typeof(IDomainSite).IsAssignableFrom(type))
+        if (property.ShouldSerialize == null 
+            && (typeof(IDomainSite).IsAssignableFrom(type) && member.Name.In(nameof(IDomainSite.Domain), nameof(IDomainSite.Site))
+                || typeof(IMutable).IsAssignableFrom(type) && member.Name.In(nameof(IMutable.CreateUser), nameof(IMutable.CreateTime), nameof(IMutable.UpdateUser), nameof(IMutable.UpdateTime))))
         {
-            property.ShouldSerialize = member.Name switch
-            {
-                nameof(IDomainSite.Domain) => _ => false,
-                nameof(IDomainSite.Site) => _ => false,
-                _ => property.ShouldSerialize
-            };
-        }
-
-        if (typeof(IMutable).IsAssignableFrom(type))
-        {
-            property.ShouldSerialize = member.Name switch
-            {
-                nameof(IMutable.CreateUser) => _ => false,
-                nameof(IMutable.CreateTime) => _ => false,
-                nameof(IMutable.UpdateUser) => _ => false,
-                nameof(IMutable.UpdateTime) => _ => false,
-                _ => property.ShouldSerialize
-            };
+            property.ShouldSerialize = _ => false;
         }
 
         if (property.PropertyType == typeof(TimeSpan))
