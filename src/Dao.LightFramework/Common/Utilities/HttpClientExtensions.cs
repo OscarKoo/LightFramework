@@ -55,8 +55,6 @@ public static class HttpClientExtensions
 
         HttpResponseMessage response = null;
         TResult result = default;
-        var type = typeof(TResult);
-        var isString = type == typeof(string);
         string error = null;
         try
         {
@@ -68,11 +66,11 @@ public static class HttpClientExtensions
         catch (Exception ex)
         {
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"request \"{url}\" failed, response: {(isString ? result as string : type.Name)}, error: {error}", (int)(response?.StatusCode ?? 0));
+            throw new BadHttpRequestException($"request \"{url}\" failed, response: {ReadResultString(result)}, error: {error}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {
-            sb.AppendLine($"Result: {(isString ? result as string : type.Name) ?? error}");
+            sb.AppendLine($"Result: {ReadResultString(result) ?? error}");
             sb.AppendLine($"Response: Cost {sw.Stop()}");
 
             if (string.IsNullOrWhiteSpace(error))
@@ -80,6 +78,19 @@ public static class HttpClientExtensions
             else
                 StaticLogger.LogError(sb.ToString());
         }
+    }
+
+    static string ReadResultString<TResult>(TResult result)
+    {
+        if (result == null)
+            return null;
+
+        var type = typeof(TResult);
+        return typeof(Stream).IsAssignableFrom(type)
+            ? type.Name
+            : typeof(string).IsAssignableFrom(type)
+                ? result as string
+                : result.ToJson();
     }
 
     public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
