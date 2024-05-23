@@ -456,5 +456,10 @@ public static class Extensions
 
     public static bool InIgnoreCase(this string source, params string[] args) => source.In(StringComparer.OrdinalIgnoreCase, args);
 
+    public static TOut Cast<TIn, TOut>(this TIn source)
+    {
+        return (TOut)(object)source;
+    }
+
     #endregion
 }

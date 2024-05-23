@@ -10,7 +10,7 @@ namespace Dao.LightFramework.Common.Utilities;
 
 public static class HttpClientExtensions
 {
-    public static async Task<TResult> SendAsync<TResult>(this HttpClient client, Func<HttpContent, Task<TResult>> onResponse, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
+    static async Task<TResult> SendCoreAsync<TResult>(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
     {
         if (client == null)
             return default;
@@ -59,7 +59,16 @@ public static class HttpClientExtensions
         try
         {
             response = await client.SendAsync(request);
-            result = await onResponse(response.Content);
+
+            var type = typeof(TResult);
+            result = type == typeof(string)
+                ? (await response.Content.ReadAsStringAsync()).Cast<string, TResult>()
+                : type == typeof(Stream)
+                    ? (await response.Content.ReadAsStreamAsync()).Cast<Stream, TResult>()
+                    : type == typeof(byte[])
+                        ? (await response.Content.ReadAsByteArrayAsync()).Cast<byte[], TResult>()
+                        : throw new NotSupportedException($"{type.Name} is not supported.");
+
             response.EnsureSuccessStatusCode();
             return result;
         }
@@ -86,30 +95,25 @@ public static class HttpClientExtensions
             return null;
 
         var type = typeof(TResult);
-        return typeof(Stream).IsAssignableFrom(type)
-            ? type.Name
-            : typeof(string).IsAssignableFrom(type)
-                ? result as string
-                : result.ToJson();
+        return type == typeof(string) ? result as string : type.Name;
     }
 
     public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
-        await client.SendAsync(async resp => await resp.ReadAsStringAsync(), query, method, content, headers);
+        await client.SendCoreAsync<string>(query, method, content, headers);
 
     public static async Task<string> SendAsync(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
         await client.SendAsync(query, method, JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }), headers);
 
     public static async Task<TResult> SendAsync<TResult>(this HttpClient client, string query, HttpMethod method, HttpContent content = null, IEnumerable<KeyValuePair<string, string>> headers = null)
     {
-        var result = await client.SendAsync(query, method, content, headers);
-        return result.ToObject<TResult>();
+        var type = typeof(TResult);
+        return type == typeof(string) || type == typeof(Stream) || type == typeof(byte[])
+            ? await client.SendCoreAsync<TResult>(query, method, content, headers)
+            : (await client.SendAsync(query, method, content, headers)).ToObject<TResult>();
     }
 
-    public static async Task<TResult> SendAsync<TResult>(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null)
-    {
-        var result = await client.SendAsync(query, method, body, headers);
-        return result.ToObject<TResult>();
-    }
+    public static async Task<TResult> SendAsync<TResult>(this HttpClient client, string query, HttpMethod method, object body = null, IEnumerable<KeyValuePair<string, string>> headers = null) =>
+        await client.SendAsync<TResult>(query, method, JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }), headers);
 
     public static void RemoveNames(this HttpHeaders headers, params string[] names)
     {
