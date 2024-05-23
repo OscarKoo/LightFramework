@@ -62,11 +62,11 @@ public static class HttpClientExtensions
 
             var type = typeof(TResult);
             result = type == typeof(string)
-                ? (await response.Content.ReadAsStringAsync()).Cast<string, TResult>()
+                ? (await response.Content.ReadAsStringAsync()).CastTo<TResult>()
                 : type == typeof(Stream)
-                    ? (await response.Content.ReadAsStreamAsync()).Cast<Stream, TResult>()
+                    ? (await response.Content.ReadAsStreamAsync()).CastTo<TResult>()
                     : type == typeof(byte[])
-                        ? (await response.Content.ReadAsByteArrayAsync()).Cast<byte[], TResult>()
+                        ? (await response.Content.ReadAsByteArrayAsync()).CastTo<TResult>()
                         : throw new NotSupportedException($"{type.Name} is not supported.");
 
             response.EnsureSuccessStatusCode();
