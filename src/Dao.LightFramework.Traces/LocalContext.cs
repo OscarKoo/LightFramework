@@ -32,6 +32,7 @@ public class TraceId : LocalContext<TraceId>
     public TraceId Renew(HttpRequest request = null, string defaultValue = null) => Renew(TraceContext.AsyncTraceId,
         ctx => ctx.Value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w))
             ?? defaultValue
+            ?? TraceContext.TraceId.Value
             ?? NewId.NextSequentialGuid().ToString());
 }
 
@@ -133,4 +134,16 @@ public class SpanId : LocalContext<SpanId>
     //}
 
     #endregion
+}
+
+public class ClientId : LocalContext<ClientId>
+{
+    public const string Header = "X-Client-Id";
+
+    public string Value { get; set; }
+
+    public ClientId Renew(HttpRequest request = null, string defaultValue = null) => Renew(TraceContext.AsyncClientId,
+        ctx => ctx.Value = request?.Headers[Header].FirstOrDefault(w => !string.IsNullOrWhiteSpace(w))
+            ?? defaultValue
+            ?? TraceContext.TraceId.Value);
 }

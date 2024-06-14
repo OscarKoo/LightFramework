@@ -34,9 +34,15 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         };
 
         var sb = new StringBuilder();
+        var httpContext = context.HttpContext;
         try
         {
-            var request = context.HttpContext.Request;
+            var request = httpContext.Request;
+            TraceContext.TraceId.Renew(request);
+            TraceContext.SpanId.Renew(request, 1).Degrade();
+            TraceContext.ClientId.Renew(request);
+            StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} Begin:");
+
             sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             sb.AppendLine("RequestContext: " + new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>()).ToJson());
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
@@ -50,8 +56,6 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 var info = TraceContext.Info.Renew();
                 info.ClassName = controllerAction.ControllerName;
                 info.MethodName = controllerAction.ActionName;
-                TraceContext.TraceId.Renew(request);
-                TraceContext.SpanId.Renew(request, 1).Degrade();
 
                 foreach (var filter in GetFilters(controllerAction.MethodInfo).Concat(GetFilters(controllerAction.ControllerTypeInfo)))
                 {
@@ -73,6 +77,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         {
             if (sb.Length > 0)
                 StaticLogger.LogInformation(sb.ToString());
+            StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} End.");
         }
     }
 

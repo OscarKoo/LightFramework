@@ -21,9 +21,11 @@ public static class HttpClientExtensions
             ? new Uri(query, UriKind.RelativeOrAbsolute)
             : null;
 
+        var traceId = TraceContext.TraceId.Value;
+
         var url = (client.BaseAddress?.ToString()).JoinUri(query);
         var sb = new StringBuilder();
-        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {method.ToString()} {url}");
+        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {traceId}) MicroService: {method.ToString()} {url}");
 
         var request = new HttpRequestMessage(method, uri);
         if (method != HttpMethod.Get && content != null)
@@ -32,8 +34,7 @@ public static class HttpClientExtensions
             sb.AppendLine("Parameter: " + await content.ReadAsStringAsync());
         }
 
-        request.Headers.RemoveNames(TraceId.Header, SpanId.Header);
-        var traceId = TraceContext.TraceId.Value;
+        request.Headers.RemoveNames(TraceId.Header, SpanId.Header, ClientId.Header);
         if (!string.IsNullOrWhiteSpace(traceId))
             request.Headers.Add(TraceId.Header, traceId);
         if (TraceContext.SpanId.HasValue)
@@ -41,6 +42,9 @@ public static class HttpClientExtensions
             var spanId = TraceContext.SpanId.Value;
             request.Headers.Add(SpanId.Header, spanId);
         }
+        var clientId = TraceContext.ClientId.Value;
+        if (!string.IsNullOrWhiteSpace(clientId))
+            request.Headers.Add(ClientId.Header, clientId);
 
         if (headers != null)
         {
