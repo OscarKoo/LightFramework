@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Dao.LightFramework.Common.Exceptions;
 using Dao.LightFramework.Traces;
 using Microsoft.AspNetCore.Http;
 
@@ -63,6 +64,30 @@ public static class HttpClientExtensions
         try
         {
             response = await client.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string msg = null;
+                HttpException ex = null;
+                try
+                {
+                    msg = await response.Content.ReadAsStringAsync();
+                    ex = msg.ToObject<HttpException>();
+                }
+                catch (Exception e)
+                {
+                    // ignored
+                }
+
+                if (!string.IsNullOrWhiteSpace(msg))
+                {
+                    ex ??= new HttpException();
+                    if (string.IsNullOrWhiteSpace(ex.Message))
+                        ex.Message = msg;
+                    ex.StatusCode ??= (int)response.StatusCode;
+                    throw ex;
+                }
+            }
 
             var type = typeof(TResult);
             result = type == typeof(string)

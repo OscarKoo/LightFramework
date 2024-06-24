@@ -15,7 +15,6 @@
 
     <ItemGroup>
         <Folder Include="Application\Utilities\" />
-        <Folder Include="Common\Exceptions\" />
         <Folder Include="Domain\Utilities\" />
         <Folder Include="EntityFrameworkCore\DataMigration\" />
         <Folder Include="EntityFrameworkCore\Utilities\" />

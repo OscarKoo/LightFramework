@@ -28,6 +28,7 @@ public class ConfirmException : Exception
         context.HttpContext.Response.StatusCode = 600;
         context.Result = new JsonResult(new ExceptionResult
         {
+            ExceptionType = nameof(ConfirmException),
             Type = ExceptionType.Confirm.ToString(),
             Message = this.content.Q,
             Data = this.data

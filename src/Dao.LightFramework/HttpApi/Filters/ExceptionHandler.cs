@@ -28,11 +28,14 @@ public class ExceptionHandler : ExceptionFilterAttribute
 
         var result = new ExceptionResult
         {
+            ExceptionType = context.Exception.GetType().Name,
             Type = (isWarning ? ExceptionType.Warning : ExceptionType.Error).ToString(),
             Message = context.Exception.GetBaseException().Message
         };
         if (!isWarning)
             StaticLogger.LogError(context.Exception, result.Message);
+        else
+            StaticLogger.LogWarning(context.Exception, result.Message);
 
         context.Result = new JsonResult(result);
         context.ExceptionHandled = true;
