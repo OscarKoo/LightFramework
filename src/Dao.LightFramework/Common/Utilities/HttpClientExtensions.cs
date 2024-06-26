@@ -104,7 +104,7 @@ public static class HttpClientExtensions
         catch (Exception ex)
         {
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"request \"{url}\" failed, response: {ReadResultString(result)}, error: {error}", (int)(response?.StatusCode ?? 0));
+            throw new BadHttpRequestException($"{method} \"{url}\" failed, response: {ReadResultString(result)}, error: {error}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {
