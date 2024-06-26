@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Dao.LightFramework.Common.Exceptions;
 using Dao.LightFramework.Traces;
 using Microsoft.AspNetCore.Http;
@@ -68,11 +69,11 @@ public static class HttpClientExtensions
             if (!response.IsSuccessStatusCode)
             {
                 string msg = null;
-                HttpException ex = null;
+                ExceptionResult er = null;
                 try
                 {
                     msg = await response.Content.ReadAsStringAsync();
-                    ex = msg.ToObject<HttpException>();
+                    er = msg.ToObject<ExceptionResult>();
                 }
                 catch (Exception e)
                 {
@@ -81,11 +82,10 @@ public static class HttpClientExtensions
 
                 if (!string.IsNullOrWhiteSpace(msg))
                 {
-                    ex ??= new HttpException();
-                    if (string.IsNullOrWhiteSpace(ex.Message))
-                        ex.Message = msg;
-                    ex.StatusCode ??= (int)response.StatusCode;
-                    throw ex;
+                    var m = !string.IsNullOrWhiteSpace(er?.Message)
+                        ? er.Message
+                        : GetMessageFromException(msg);
+                    throw new BadHttpRequestException(m, (int)response.StatusCode);
                 }
             }
 
@@ -162,5 +162,25 @@ public static class HttpClientExtensions
             return;
         headers.RemoveNames(name);
         headers.Add(name, value);
+    }
+
+    static readonly Regex atRegex = new(@"^ +at \b", RegexOptions.Compiled);
+    static string GetMessageFromException(string text)
+    {
+        var lines = new List<string>();
+        using (var sr = new StringReader(text))
+        {
+            while (sr.ReadLine() is { } line)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+                if (atRegex.IsMatch(line))
+                    break;
+
+                lines.Add(line.Trim());
+            }
+        }
+
+        return string.Join(Environment.NewLine, lines.Distinct(StringComparer.OrdinalIgnoreCase));
     }
 }
