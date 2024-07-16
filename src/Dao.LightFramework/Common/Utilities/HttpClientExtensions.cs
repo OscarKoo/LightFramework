@@ -66,6 +66,7 @@ public static class HttpClientExtensions
         {
             response = await client.SendAsync(request);
 
+            var type = typeof(TResult);
             if (!response.IsSuccessStatusCode)
             {
                 string msg = null;
@@ -85,11 +86,12 @@ public static class HttpClientExtensions
                     var m = !string.IsNullOrWhiteSpace(er?.Message)
                         ? er.Message
                         : GetMessageFromException(msg);
+                    if (string.IsNullOrWhiteSpace(m) && type != typeof(Stream))
+                        m = msg;
                     throw new BadHttpRequestException(m, (int)response.StatusCode);
                 }
             }
 
-            var type = typeof(TResult);
             result = type == typeof(string)
                 ? (await response.Content.ReadAsStringAsync()).CastTo<TResult>()
                 : type == typeof(Stream)
@@ -164,7 +166,7 @@ public static class HttpClientExtensions
         headers.Add(name, value);
     }
 
-    static readonly Regex atRegex = new(@"^ +at \b", RegexOptions.Compiled);
+    static readonly Regex atRegex = new(@"^ +at \b([^\.\(]+\.)+[^\.\(]+[\(]", RegexOptions.Compiled);
     static string GetMessageFromException(string text)
     {
         var lines = new List<string>();
