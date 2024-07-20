@@ -6,7 +6,6 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Dao.LightFramework.Common.Exceptions;
 using Dao.LightFramework.Traces;
-using Microsoft.AspNetCore.Http;
 
 namespace Dao.LightFramework.Common.Utilities;
 
@@ -81,6 +80,9 @@ public static class HttpClientExtensions
                     // ignored
                 }
 
+                if (er is { ExceptionType: nameof(HttpResultException) } && !string.IsNullOrWhiteSpace(er.Message))
+                    throw new HttpResultException(er.Message, (int)response.StatusCode);
+
                 if (!string.IsNullOrWhiteSpace(msg))
                 {
                     var m = !string.IsNullOrWhiteSpace(er?.Message)
@@ -88,7 +90,7 @@ public static class HttpClientExtensions
                         : GetMessageFromException(msg);
                     if (string.IsNullOrWhiteSpace(m) && type != typeof(Stream))
                         m = msg;
-                    throw new BadHttpRequestException(m, (int)response.StatusCode);
+                    throw new HttpException(m, (int)response.StatusCode);
                 }
             }
 
@@ -105,8 +107,11 @@ public static class HttpClientExtensions
         }
         catch (Exception ex)
         {
+            if (ex is HttpResultException)
+                throw;
+
             error = ex.GetBaseException().Message;
-            throw new BadHttpRequestException($"{method} \"{url}\" failed, response: {ReadResultString(result)}, error: {error}", (int)(response?.StatusCode ?? 0));
+            throw new HttpResultException($"{method} \"{url}\" failed, response: {ReadResultString(result)}, error: {error}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {

@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using Dao.LightFramework.Common.Exceptions;
 using Dao.LightFramework.Common.Utilities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -20,8 +19,8 @@ public class ExceptionHandler : ExceptionFilterAttribute
 
         var isWarning = context.Exception is WarningException;
         context.HttpContext.Response.ContentType = "application/json";
-        context.HttpContext.Response.StatusCode = context.Exception is BadHttpRequestException { StatusCode: > 0 } bhrEx
-            ? bhrEx.StatusCode
+        context.HttpContext.Response.StatusCode = context.Exception is HttpException { StatusCode: > 0 } hrEx
+            ? hrEx.StatusCode
             : isWarning
                 ? (int)HttpStatusCode.BadRequest
                 : (int)HttpStatusCode.InternalServerError;
@@ -33,9 +32,9 @@ public class ExceptionHandler : ExceptionFilterAttribute
             Message = context.Exception.GetBaseException().Message
         };
         if (!isWarning)
-            StaticLogger.LogError(context.Exception, result.Message);
+            StaticLogger.LogError(context.Exception, "[ExceptionFilter]");
         else
-            StaticLogger.LogWarning(context.Exception, result.Message);
+            StaticLogger.LogWarning(context.Exception, "[ExceptionFilter]");
 
         context.Result = new JsonResult(result);
         context.ExceptionHandled = true;
