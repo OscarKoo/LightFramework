@@ -50,8 +50,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             var sw = new StopWatch();
             sw.Start();
 
-            var controllerAction = context.ActionDescriptor as ControllerActionDescriptor;
-            if (controllerAction != null)
+            if (context.ActionDescriptor is ControllerActionDescriptor controllerAction)
             {
                 var info = TraceContext.Info.Renew();
                 info.ClassName = controllerAction.ControllerName;
@@ -69,9 +68,9 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
             if (result.Result is ObjectResult obj)
                 sb.AppendLine($"Result: {obj.Value.ToJson()}");
-            sb.AppendLine($"Response: Cost {sw.Format(nextCost)}");
             if (hasFilter)
                 sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - nextCost)}");
+            sb.AppendLine($"Elapsed: Cost {sw.Format(nextCost)}");
         }
         finally
         {

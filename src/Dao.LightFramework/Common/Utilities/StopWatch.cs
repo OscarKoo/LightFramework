@@ -27,7 +27,7 @@ public class StopWatch
     public string Format(double elapsed)
     {
         var ms = Stopwatch.RoundMilliseconds(elapsed);
-        return $"{(ms > this.attention ? "[ATTENTION] " : "")}{ms} ms, {Stopwatch.RoundMicroseconds(elapsed)} us, {Stopwatch.RoundNanoseconds(elapsed)} ns";
+        return $"{(ms > this.attention ? "[ATTENTION] " : "")}{ms} ms ({Stopwatch.RoundMicroseconds(elapsed)} us, {Stopwatch.RoundNanoseconds(elapsed)} ns)";
     }
 }
 

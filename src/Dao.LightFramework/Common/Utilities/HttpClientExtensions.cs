@@ -111,12 +111,12 @@ public static class HttpClientExtensions
                 throw;
 
             error = ex.GetBaseException().Message;
-            throw new HttpResultException($"{method} \"{url}\" failed, response: {ReadResultString(result)}, error: {error}", (int)(response?.StatusCode ?? 0));
+            throw new HttpResultException(string.Join(Environment.NewLine, $"{method} \"{url}\" Failed! ", $"Error: {error.Coalesce(ReadResultString(result))}"), (int)(response?.StatusCode ?? 0));
         }
         finally
         {
-            sb.AppendLine($"Result: {ReadResultString(result) ?? error}");
-            sb.AppendLine($"Response: Cost {sw.Stop()}");
+            sb.AppendLine($"Result: {ReadResultString(result).Coalesce(error)}");
+            sb.AppendLine($"Elapsed: Cost {sw.Stop()}");
 
             if (string.IsNullOrWhiteSpace(error))
                 StaticLogger.LogInformation(sb.ToString());
