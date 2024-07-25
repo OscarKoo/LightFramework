@@ -16,7 +16,7 @@ public class DataHasChangedException : WarningException
 
 public static class ExceptionExtensions
 {
-    public static void ThrowDataHasChangedException(DbUpdateConcurrencyException ex, Func<string> funcMessage, object dto = null)
+    public static void ThrowDataHasChangedException(this DbUpdateConcurrencyException ex, Func<string> funcMessage, object dto = null)
     {
         foreach (var entry in ex.Entries)
         {
