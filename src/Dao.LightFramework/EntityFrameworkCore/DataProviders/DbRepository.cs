@@ -197,7 +197,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
 
         var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         if (entity.IsNew)
-            throw new DataHasChangedException(Lang.Get("数据已被其他用户删除. ({0}: {1})", typeof(TDto).Name, dto.Id));
+            throw new DataHasChangedException(Lang.Get("数据已被其他用户删除. ({0}: {1})", typeof(TDto).Name, dto.Id), null, dto);
         return await DeleteAsync(entity, autoSave);
     }
 

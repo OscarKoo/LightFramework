@@ -12,10 +12,10 @@ public static class EntityExtensions
             return false;
 
         if (dto.RowVersion == null)
-            return lang == null ? true : throw new DataHasChangedException(lang.Get("数据缺少RowVersion字段. ({0}: {1})", entity.GetType().Name, (entity as IId)?.Id));
+            return lang == null ? true : throw new DataHasChangedException(lang.Get("数据缺少RowVersion字段. ({0}: {1})", entity.GetType().Name, (entity as IId)?.Id), entity, dto);
 
         if (!entity.RowVersion.SequenceEqual(dto.RowVersion))
-            return lang == null ? true : throw new DataHasChangedException(lang.Get("数据已被其他用户修改, 请重新获取. ({0}: {1})", entity.GetType().Name, (entity as IId)?.Id));
+            return lang == null ? true : throw new DataHasChangedException(lang.Get("数据已被其他用户修改, 请重新获取. ({0}: {1})", entity.GetType().Name, (entity as IId)?.Id), entity, dto);
 
         return false;
     }
