@@ -140,7 +140,17 @@ public class EFContext : DbContext
         foreach (var entry in ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
         {
             if (entry.State != EntityState.Deleted)
+            {
+                if (entry.State == EntityState.Modified
+                    && !entry.Properties.Where(p => p.Metadata.Name != nameof(IRowVersion.RowVersion)).Any(p => p.IsModified))
+                {
+                    if (entry.Entity is IId id)
+                        StaticLogger.LogWarning($"SaveChangesAsync: Ignore no updates ({entry.Entity.GetType().Name}: {id})");
+                    continue;
+                }
+
                 this.requestContext.FillEntity(entry.Entity);
+            }
 
             next = BuildSavingSpecificEntity(entry, next);
             next = BuildSavingAnyEntity(entry, next);
