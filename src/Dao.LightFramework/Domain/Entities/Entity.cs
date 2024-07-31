@@ -22,15 +22,21 @@ public abstract class Entity : IId
     [NotMapped, JsonIgnore, Newtonsoft.Json.JsonIgnore, SwaggerIgnore]
     public virtual string[] CacheKeys => null;
 
-    public static string CacheKey<T>(params string[] keys) => $"{typeof(T).Name}_{string.Join("_", keys)}";
+    public static string[] GetCacheKeys<T>(params string[] keys)
+    {
+        var type = typeof(T).Name;
+        if (keys.IsNullOrEmpty())
+            keys = new[] { string.Empty };
+        return keys.Select(s => CacheKeyJoin(type, s)).Distinct().ToArray();
+    }
 
-    protected static string[] CacheKeyArray<T>(params string[] keys)
+    protected static string[] SetCacheKeys<T>(params string[] keys)
     {
         var type = typeof(T).Name;
         return string.Empty.ToEnumerable().Concat(keys).Select(key => CacheKeyJoin(type, key)).Distinct().ToArray();
     }
 
-    protected static string CacheKeyJoin(params string[] parts) => string.Join("_", parts);
+    public static string CacheKeyJoin(params string[] parts) => string.Join("_", parts);
 
     #endregion
 }
