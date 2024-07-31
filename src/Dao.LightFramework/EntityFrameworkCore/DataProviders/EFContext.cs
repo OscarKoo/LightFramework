@@ -96,6 +96,38 @@ public class EFContext : DbContext
 
     #region OnSaving
 
+    static bool RequireUpdate(EntityEntry entry)
+    {
+        PropertyEntry version = null;
+        var isModified = false;
+        foreach (var property in entry.Properties)
+        {
+            if (property.Metadata.Name == nameof(IRowVersion.RowVersion))
+            {
+                version = property;
+                continue;
+            }
+
+            if (!property.IsModified)
+                continue;
+
+            isModified = true;
+            break;
+        }
+
+        if (isModified)
+            return true;
+
+        if (version is { IsModified: true })
+            version.IsModified = false;
+
+        if (entry.Entity is IId id)
+            StaticLogger.LogWarning($"SaveChangesAsync: Ignore no updates ({entry.Entity.GetType().Name}: {id})");
+        return false;
+    }
+
+    #region BuildNext
+
     Func<Task<int>> BuildSavingSpecificEntity(EntityEntry entry, Func<Task<int>> next)
     {
         var entityType = entry.Metadata.ClrType;
@@ -141,13 +173,8 @@ public class EFContext : DbContext
         {
             if (entry.State != EntityState.Deleted)
             {
-                if (entry.State == EntityState.Modified
-                    && !entry.Properties.Where(p => p.Metadata.Name != nameof(IRowVersion.RowVersion)).Any(p => p.IsModified))
-                {
-                    if (entry.Entity is IId id)
-                        StaticLogger.LogWarning($"SaveChangesAsync: Ignore no updates ({entry.Entity.GetType().Name}: {id})");
+                if (entry.State == EntityState.Modified && !RequireUpdate(entry))
                     continue;
-                }
 
                 this.requestContext.FillEntity(entry.Entity);
             }
@@ -188,6 +215,8 @@ public class EFContext : DbContext
 
         return next;
     }
+
+    #endregion
 
     #endregion
 
