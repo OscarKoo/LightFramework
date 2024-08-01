@@ -116,7 +116,7 @@ public static class HttpClientExtensions
         finally
         {
             sb.AppendLine($"Result: {ReadResultString(result).Coalesce(error)}");
-            sb.AppendLine($"Elapsed: Cost {sw.Stop()}");
+            sb.Append($"Elapsed: Cost {sw.Stop()}");
 
             if (string.IsNullOrWhiteSpace(error))
                 StaticLogger.LogInformation(sb.ToString());

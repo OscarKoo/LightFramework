@@ -70,7 +70,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 sb.AppendLine($"Result: {obj.Value.ToJson()}");
             if (hasFilter)
                 sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - nextCost)}");
-            sb.AppendLine($"Elapsed: Cost {sw.Format(nextCost)}");
+            sb.Append($"Elapsed: Cost {sw.Format(nextCost)}");
         }
         finally
         {

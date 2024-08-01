@@ -258,7 +258,7 @@ public class EFContext : DbContext
 
         var sb = new StringBuilder();
         sb.AppendLine($"SaveChangesAsync: Cost {sw.Format(nextCost)}");
-        sb.AppendLine($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
+        sb.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
         StaticLogger.LogInformation(sb.ToString());
 
         return result;
