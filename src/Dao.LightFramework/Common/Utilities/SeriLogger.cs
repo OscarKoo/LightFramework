@@ -8,14 +8,14 @@ public class SeriLoggerSetting
 {
     public static Func<string, ILogger> CreateLogger { get; set; }
 
-    public static LoggerConfiguration CreateDefaultConfiguration(string serviceName) =>
+    public static LoggerConfiguration CreateDefaultConfiguration(string serviceName, LogEventLevel logLevel = LogEventLevel.Verbose) =>
         new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Is(logLevel)
             .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
-            .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", LogEventLevel.Debug, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: 168);
+            .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", logLevel, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: 168);
 
-    public static ILogger CreateDefaultLogger(string serviceName) =>
-        CreateDefaultConfiguration(serviceName).CreateLogger();
+    public static ILogger CreateDefaultLogger(string serviceName, LogEventLevel logLevel = LogEventLevel.Verbose) =>
+        CreateDefaultConfiguration(serviceName, logLevel).CreateLogger();
 }
 
 public class SeriLogger<TService>
