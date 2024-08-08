@@ -111,7 +111,7 @@ public static class HttpClientExtensions
                 throw;
 
             error = ex.GetBaseException().Message;
-            throw new HttpResultException(string.Join(Environment.NewLine, $"{method} \"{url}\" Failed! ", $"Error: {error.Coalesce(ReadResultString(result))}"), (int)(response?.StatusCode ?? 0));
+            throw new HttpResultException($"{method} \"{url}\"", $"{error.Coalesce(ReadResultString(result))}", (int)(response?.StatusCode ?? 0));
         }
         finally
         {

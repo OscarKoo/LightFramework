@@ -34,7 +34,13 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return query;
     }
 
-    public async Task<int> SaveChangesAsync(bool autoSave) => autoSave ? await this.dbContext.SaveChangesAsync() : 0;
+    public async Task<int> SaveChangesAsync(bool autoSave, bool ignoreRowVersionOnSaving = false)
+    {
+        if (autoSave && ignoreRowVersionOnSaving && this.dbContext is EFContext)
+            DbContextCurrent.Add(IgnoreRowVersionMode.Once);
+
+        return autoSave ? await this.dbContext.SaveChangesAsync() : 0;
+    }
 
     #region Entity
 
@@ -67,7 +73,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return query.ToListFromCacheAsync(asNoTracking, cacheKeys);
     }
 
-    public async Task<TEntity> SaveAsync(TEntity entity, bool autoSave = false)
+    public async Task<TEntity> SaveAsync(TEntity entity, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
     {
         if (entity.IsNew)
         {
@@ -80,11 +86,11 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         //    DbSet.Update(entity);
         //}
 
-        await SaveChangesAsync(autoSave);
+        await SaveChangesAsync(autoSave, ignoreRowVersionOnSaving);
         return entity;
     }
 
-    public async Task<ICollection<TEntity>> SaveManyAsync(ICollection<TEntity> entities, bool autoSave = false)
+    public async Task<ICollection<TEntity>> SaveManyAsync(ICollection<TEntity> entities, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
     {
         if (entities.IsNullOrEmpty())
             return entities;
@@ -101,45 +107,45 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         //if (update.Count > 0)
         //    DbSet.UpdateRange(update);
 
-        await SaveChangesAsync(autoSave);
+        await SaveChangesAsync(autoSave, ignoreRowVersionOnSaving);
         return entities;
     }
 
-    public async Task<int> DeleteAsync(TEntity entity, bool autoSave = false)
+    public async Task<int> DeleteAsync(TEntity entity, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
     {
         if (this.isSoftDelete)
         {
             ((IDeleted)entity).IsDeleted = true;
-            await SaveAsync(entity, autoSave);
+            await SaveAsync(entity, autoSave, ignoreRowVersionOnSaving);
         }
         else
         {
             DbSet.Remove(entity);
-            await SaveChangesAsync(autoSave);
+            await SaveChangesAsync(autoSave, ignoreRowVersionOnSaving);
         }
 
         return 1;
     }
 
-    public async Task<int> DeleteManyAsync(ICollection<TEntity> entities, bool autoSave = false)
+    public async Task<int> DeleteManyAsync(ICollection<TEntity> entities, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
     {
         if (this.isSoftDelete)
         {
             foreach (var entity in entities)
                 ((IDeleted)entity).IsDeleted = true;
 
-            await SaveManyAsync(entities, autoSave);
+            await SaveManyAsync(entities, autoSave, ignoreRowVersionOnSaving);
         }
         else
         {
             DbSet.RemoveRange(entities);
-            await SaveChangesAsync(autoSave);
+            await SaveChangesAsync(autoSave, ignoreRowVersionOnSaving);
         }
 
         return entities.Count;
     }
 
-    public async Task<int> DeleteAsync(Expression<Func<TEntity, bool>> where, bool autoSave = false)
+    public async Task<int> DeleteAsync(Expression<Func<TEntity, bool>> where, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
     {
         var query = DbQuery();
         if (where != null)
@@ -162,20 +168,20 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return dto.Adapt(entity, ignoreNullValue);
     }
 
-    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId => await SaveDtoAsync(dto, null, autoSave, ignoreNullValue);
+    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, bool autoSave = false, bool ignoreNullValue = true, bool ignoreRowVersionOnSaving = false) where TDto : IId => await SaveDtoAsync(dto, null, autoSave, ignoreNullValue, ignoreRowVersionOnSaving);
 
-    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, TEntity entity, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
+    public async Task<TEntity> SaveDtoAsync<TDto>(TDto dto, TEntity entity, bool autoSave = false, bool ignoreNullValue = true, bool ignoreRowVersionOnSaving = false) where TDto : IId
     {
         entity ??= await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         var tracker = new EntityDtoTracker();
         tracker.Add(entity, dto);
         if (!autoSave) (this.dbContext as EFContext)?.EntityDtoTracker.Add(entity, dto);
-        await SaveAsync(entity, autoSave);
+        await SaveAsync(entity, autoSave, ignoreRowVersionOnSaving);
         tracker.MapToDtos();
         return entity;
     }
 
-    public async Task<ICollection<TDto>> SaveManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
+    public async Task<ICollection<TDto>> SaveManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true, bool ignoreRowVersionOnSaving = false) where TDto : IId
     {
         var tracker = new EntityDtoTracker();
         var entities = await dtos.SelectAsync(async dto =>
@@ -190,7 +196,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return dtos;
     }
 
-    public async Task<int> DeleteDtoAsync<TDto>(TDto dto, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
+    public async Task<int> DeleteDtoAsync<TDto>(TDto dto, bool autoSave = false, bool ignoreNullValue = true, bool ignoreRowVersionOnSaving = false) where TDto : IId
     {
         if (dto == null)
             return 0;
@@ -198,10 +204,10 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         if (entity.IsNew)
             throw new DataHasChangedException(Lang.Get("数据已被其他用户删除. ({0}: {1})", typeof(TDto).Name, dto.Id), null, dto);
-        return await DeleteAsync(entity, autoSave);
+        return await DeleteAsync(entity, autoSave, ignoreRowVersionOnSaving);
     }
 
-    public async Task<int> DeleteManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true) where TDto : IId
+    public async Task<int> DeleteManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true, bool ignoreRowVersionOnSaving = false) where TDto : IId
     {
         if (dtos.IsNullOrEmpty())
             return 0;

@@ -156,7 +156,7 @@ public static class DependencyInjectionConfig
             options.UseSqlServer(connectionString)
                 //.LogTo(s => Trace.WriteLine(s))
                 //.AddInterceptors(new LightInterceptor())
-                ;
+                .AddInterceptors(new EFInterceptor());
         }
 
         services.AddDbContext<DbContext, TContext>(DBContextOptions);

@@ -44,7 +44,10 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} Begin:");
 
             sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
-            sb.AppendLine("RequestContext: " + new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>()).ToJson());
+            var rc = new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>());
+            if (!string.IsNullOrWhiteSpace(rc.Token))
+                rc.Token = "[Token]";
+            sb.AppendLine("RequestContext: " + rc.ToJson());
             sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
 
             var sw = new StopWatch();

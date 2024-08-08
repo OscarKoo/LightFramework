@@ -25,6 +25,32 @@ public static class DbContextSetting
     public static string Collation { get; set; }
 }
 
+internal static class DbContextCurrent
+{
+    internal class Current
+    {
+        internal IgnoreRowVersionMode IgnoreRowVersionOnSaving { get; set; }
+    }
+
+    static readonly AsyncLocal<Current> current = new();
+
+    internal static IgnoreRowVersionMode IgnoreRowVersionOnSaving => current.Value?.IgnoreRowVersionOnSaving ?? IgnoreRowVersionMode.None;
+
+    public static void Add(IgnoreRowVersionMode mode)
+    {
+        current.Value ??= new Current();
+        current.Value.IgnoreRowVersionOnSaving |= mode;
+    }
+
+    public static void Remove(IgnoreRowVersionMode mode)
+    {
+        if (current.Value == null)
+            return;
+
+        current.Value.IgnoreRowVersionOnSaving &= ~mode;
+    }
+}
+
 public class EFContext : DbContext
 {
     #region OnModelCreating
@@ -171,6 +197,9 @@ public class EFContext : DbContext
     {
         foreach (var entry in ChangeTracker.Entries().Where(w => w.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
         {
+            if (!HasRowVersion && entry.Entity is IRowVersion)
+                HasRowVersion = true;
+
             if (entry.State != EntityState.Deleted)
             {
                 if (entry.State == EntityState.Modified && !RequireUpdate(entry))
@@ -220,6 +249,9 @@ public class EFContext : DbContext
 
     #endregion
 
+    internal bool IsSaving { get; set; }
+    internal bool HasRowVersion { get; set; }
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
         double nextCost = 0;
@@ -228,40 +260,52 @@ public class EFContext : DbContext
         {
             var exec = new StopWatch();
             exec.Start();
+            IsSaving = true;
             var result = await base.SaveChangesAsync(cancellationToken);
+            HasRowVersion = false;
+            IsSaving = false;
             exec.Stop();
             nextCost = exec.LastStopNS;
             return result;
         }
 
-        var sw = new StopWatch();
-        sw.Start();
-
-        var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var next = BuildSavingEntities(expiredTags, Save);
-        next = BuildSaveChanges(next);
-
-        var result = await next();
-
-        if (expiredTags.Count > 0)
+        try
         {
-            foreach (var tag in expiredTags)
+            var sw = new StopWatch();
+            sw.Start();
+
+            var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var next = BuildSavingEntities(expiredTags, Save);
+            next = BuildSaveChanges(next);
+
+            var result = await next();
+
+            if (expiredTags.Count > 0)
             {
-                QueryCacheManager.ExpireTag(tag);
+                foreach (var tag in expiredTags)
+                {
+                    QueryCacheManager.ExpireTag(tag);
+                }
+
+                expiredTags.Clear();
             }
 
-            expiredTags.Clear();
+            this.EntityDtoTracker.MapToDtos();
+            sw.Stop();
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"SaveChangesAsync: Cost {sw.Format(nextCost)}");
+            sb.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
+            StaticLogger.LogInformation(sb.ToString());
+
+            return result;
         }
-
-        this.EntityDtoTracker.MapToDtos();
-        sw.Stop();
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"SaveChangesAsync: Cost {sw.Format(nextCost)}");
-        sb.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
-        StaticLogger.LogInformation(sb.ToString());
-
-        return result;
+        finally
+        {
+            DbContextCurrent.Remove(IgnoreRowVersionMode.Once);
+            HasRowVersion = false;
+            IsSaving = false;
+        }
     }
 
     //IEnumerable<string> BeforeChanges()
