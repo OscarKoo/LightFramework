@@ -46,6 +46,18 @@ public class EntityRowVersion : Entity, IRowVersion
     public byte[] RowVersion { get; set; }
 }
 
+public static class RowVersionExtensions
+{
+    public static void SyncRowVersionFrom(this IRowVersion source, IRowVersion from)
+    {
+        if (source == null || from?.RowVersion == null)
+            return;
+
+        source.RowVersion ??= new byte[from.RowVersion.Length];
+        from.RowVersion.CopyTo(source.RowVersion, 0);
+    }
+}
+
 public abstract class EntityMutable : Entity, IMutable
 {
     public string CreateUser { get; set; }
