@@ -242,12 +242,14 @@ public static class Extensions
             : string.Join("''", array);
     }
 
-    public static int ToInt32(this string source, int defaultValue = 0) =>
+    public static int ToInt32(this string source) => source.ToInt32(0);
+    public static int ToInt32(this string source, int defaultValue) =>
         string.IsNullOrWhiteSpace(source) || !int.TryParse(source, out var number)
             ? defaultValue
             : number;
 
-    public static bool ToBool(this string source, bool defaultValue = false) =>
+    public static bool ToBool(this string source) => source.ToBool(false);
+    public static bool ToBool(this string source, bool defaultValue) =>
         string.IsNullOrWhiteSpace(source)
             ? defaultValue
             : source.EqualsIgnoreCase("true")
