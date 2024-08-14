@@ -247,12 +247,14 @@ public static class Extensions
             ? defaultValue
             : number;
 
-    public static bool ToBool(this string source) =>
-        !string.IsNullOrWhiteSpace(source)
-        && (source.EqualsIgnoreCase("true")
+    public static bool ToBool(this string source, bool defaultValue = false) =>
+        string.IsNullOrWhiteSpace(source)
+            ? defaultValue
+            : source.EqualsIgnoreCase("true")
             || source.EqualsIgnoreCase("1")
             || source.EqualsIgnoreCase("yes")
-            || source.EqualsIgnoreCase("y"));
+            || source.EqualsIgnoreCase("y")
+            || source.EqualsIgnoreCase("是");
 
     public static string Coalesce(this string first, params string[] args)
     {
