@@ -248,6 +248,12 @@ public static class Extensions
             ? defaultValue
             : number;
 
+    public static long ToLong(this string source) => source.ToLong(0);
+    public static long ToLong(this string source, long defaultValue) =>
+        string.IsNullOrWhiteSpace(source) || !long.TryParse(source, out var number)
+            ? defaultValue
+            : number;
+
     public static bool ToBool(this string source) => source.ToBool(false);
     public static bool ToBool(this string source, bool defaultValue) =>
         string.IsNullOrWhiteSpace(source)
