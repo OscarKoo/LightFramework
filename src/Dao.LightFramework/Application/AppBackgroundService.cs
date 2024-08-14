@@ -8,11 +8,13 @@ public abstract class AppBackgroundService<TService> : BackgroundService
 {
     protected readonly IServiceProvider serviceProvider;
     protected readonly SeriLogger<TService> logger;
+    protected readonly string ServiceName;
 
     protected AppBackgroundService(IServiceProvider serviceProvider)
     {
         this.serviceProvider = serviceProvider;
         this.logger = new SeriLogger<TService>();
+        this.ServiceName = GetType().Name;
     }
 
     #region StartAsync
@@ -26,7 +28,7 @@ public abstract class AppBackgroundService<TService> : BackgroundService
         }
         catch (Exception ex)
         {
-            this.logger.Error(ex);
+            this.logger.Error(this.ServiceName, ex);
             throw;
         }
     }
@@ -47,7 +49,7 @@ public abstract class AppBackgroundService<TService> : BackgroundService
         }
         catch (Exception ex)
         {
-            this.logger.Error(ex);
+            this.logger.Error(this.ServiceName, ex);
         }
     }
 
@@ -66,7 +68,7 @@ public abstract class AppBackgroundService<TService> : BackgroundService
         }
         catch (Exception ex)
         {
-            this.logger.Error(ex);
+            this.logger.Error(this.ServiceName, ex);
             throw;
         }
     }
@@ -86,7 +88,7 @@ public abstract class AppBackgroundService<TService> : BackgroundService
         }
         catch (Exception ex)
         {
-            this.logger.Error(ex);
+            this.logger.Error(this.ServiceName, ex);
         }
     }
 

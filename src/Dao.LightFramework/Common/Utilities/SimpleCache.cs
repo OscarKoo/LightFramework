@@ -44,7 +44,7 @@ public class SimpleCache<TKey>
             }
             catch (Exception ex)
             {
-                StaticLogger.LogError(ex);
+                StaticLogger.LogError(ex, "[SimpleCache]");
                 return value;
             }
 

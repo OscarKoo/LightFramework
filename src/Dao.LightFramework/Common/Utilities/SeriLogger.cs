@@ -7,15 +7,18 @@ namespace Dao.LightFramework.Common.Utilities;
 public class SeriLoggerSetting
 {
     public static Func<string, ILogger> CreateLogger { get; set; }
+    public static LogEventLevel LogLevel { get; set; } = LogEventLevel.Verbose;
+    public static long? FileSizeLimitBytes { get; set; } = 1073741824;
+    public static int? RetainedFileCountLimit { get; set; } = 168;
 
-    public static LoggerConfiguration CreateDefaultConfiguration(string serviceName, LogEventLevel logLevel = LogEventLevel.Verbose) =>
+    public static LoggerConfiguration CreateDefaultConfiguration(string serviceName, LogEventLevel? logLevel = null, long? fileSizeLimitBytes = null, int? retainedFileCountLimit = null) =>
         new LoggerConfiguration()
-            .MinimumLevel.Is(logLevel)
+            .MinimumLevel.Is(logLevel ?? LogLevel)
             .WriteTo.Console(LogEventLevel.Information, $"[{{Timestamp:HH:mm:ss}} {{Level:u3}}] ({serviceName}) {{Message:lj}}{{NewLine}}")
-            .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", logLevel, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: 168);
+            .WriteTo.File($"./Logs/{serviceName.ToLowerInvariant()}_log_.txt", logLevel ?? LogLevel, fileSizeLimitBytes: fileSizeLimitBytes ?? FileSizeLimitBytes, shared: true, rollingInterval: RollingInterval.Hour, rollOnFileSizeLimit: true, retainedFileCountLimit: retainedFileCountLimit ?? RetainedFileCountLimit);
 
-    public static ILogger CreateDefaultLogger(string serviceName, LogEventLevel logLevel = LogEventLevel.Verbose) =>
-        CreateDefaultConfiguration(serviceName, logLevel).CreateLogger();
+    public static ILogger CreateDefaultLogger(string serviceName, LogEventLevel? logLevel = null, long? fileSizeLimitBytes = null, int? retainedFileCountLimit = null) =>
+        CreateDefaultConfiguration(serviceName, logLevel, fileSizeLimitBytes, retainedFileCountLimit).CreateLogger();
 }
 
 public class SeriLogger<TService>
