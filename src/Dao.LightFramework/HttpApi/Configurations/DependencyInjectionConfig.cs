@@ -176,10 +176,14 @@ public static class DependencyInjectionConfig
 
             if (!string.IsNullOrWhiteSpace(dataMigrationSetting?.DBScriptsFolder) && !string.IsNullOrWhiteSpace(dataMigrationSetting.OnMigratedFolder))
                 ScriptRunner.Run(context, dataMigrationSetting.DBScriptsFolder, dataMigrationSetting.OnMigratedFolder, dataMigrationSetting.Replacements);
+
+            if (!string.IsNullOrWhiteSpace(dataMigrationSetting?.DBScriptsFolder) && !string.IsNullOrWhiteSpace(dataMigrationSetting.OneTimeExecutionFolder))
+                ScriptRunner.Run(context, dataMigrationSetting.DBScriptsFolder, dataMigrationSetting.OneTimeExecutionFolder, dataMigrationSetting.Replacements,
+                    ScriptRunner.ShouldExecuteOneTimeExecution, ScriptRunner.OnOneTimeExecutionExecuted);
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            StaticLogger.LogError(e);
             throw;
         }
 

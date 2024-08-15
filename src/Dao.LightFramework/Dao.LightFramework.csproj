@@ -10,11 +10,10 @@
     <PackageProjectUrl>https://github.com/OscarKoo/LightFramework</PackageProjectUrl>
     <PackageIconUrl>https://raw.githubusercontent.com/OscarKoo/LightFramework/master/favicon.ico</PackageIconUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.0.29.3</Version>
+    <Version>1.0.29.4</Version>
   </PropertyGroup>
 
     <ItemGroup>
-        <Folder Include="Application\Utilities\" />
         <Folder Include="Domain\Utilities\" />
         <Folder Include="EntityFrameworkCore\DataMigration\" />
         <Folder Include="EntityFrameworkCore\Utilities\" />
