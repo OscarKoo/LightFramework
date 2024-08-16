@@ -42,9 +42,9 @@ public abstract class EntityConfigurationBase<TEntity> : IEntityTypeConfiguratio
         if (HasInterface<IMutable>())
         {
             builder.SetProperty(e => ((IMutable)e).CreateUser, 36, true, order: 8);
-            builder.SetProperty(e => ((IMutable)e).CreateTime, true, order: 9).HasDefaultValueSql("GetDate()").ValueGeneratedOnAdd();
+            builder.SetProperty(e => ((IMutable)e).CreateTime, true, order: 9).HasDefaultValueSql("SYSDATETIME()").ValueGeneratedOnAdd();
             builder.SetProperty(e => ((IMutable)e).UpdateUser, 36, true, order: 10);
-            builder.SetProperty(e => ((IMutable)e).UpdateTime, true, order: 11).HasDefaultValueSql("GetDate()").ValueGeneratedOnAddOrUpdate().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Save);
+            builder.SetProperty(e => ((IMutable)e).UpdateTime, true, order: 11).HasDefaultValueSql("SYSDATETIME()").ValueGeneratedOnAddOrUpdate().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Save);
         }
 
         if (HasInterface<IRowVersion>())
@@ -62,7 +62,7 @@ public static class EntityTypeBuilderExtensions
 {
     public static PropertyBuilder<TProperty> SetProperty<TEntity, TProperty>(this EntityTypeBuilder<TEntity> builder,
         Expression<Func<TEntity, TProperty>> propertyExpression,
-        int? maxLength = null, bool isRequired = false, string columnType = null, bool useDateTime2 = false, int? order = null, bool isConcurrencyToken = false)
+        int? maxLength = null, bool isRequired = false, string columnType = null, int? order = null, bool isConcurrencyToken = false)
         where TEntity : Entity
     {
         var property = builder.Property(propertyExpression);
@@ -74,8 +74,8 @@ public static class EntityTypeBuilderExtensions
             property = property.HasColumnType(columnType);
         else if (typeof(TProperty) == typeof(TimeSpan))
             property = property.HasColumnType("Time(0)");
-        else if (!useDateTime2 && (typeof(TProperty) == typeof(DateTime) || typeof(TProperty) == typeof(DateTime?)))
-            property = property.HasColumnType("datetime");
+        else if ((typeof(TProperty) == typeof(DateTime) || typeof(TProperty) == typeof(DateTime?)))
+            property = property.HasColumnType("datetime2(7)");
         if (order != null)
             property.HasColumnOrder(order);
         if (isConcurrencyToken)
@@ -85,9 +85,9 @@ public static class EntityTypeBuilderExtensions
 
     public static PropertyBuilder<TProperty> SetProperty<TEntity, TProperty>(this EntityTypeBuilder<TEntity> builder,
         Expression<Func<TEntity, TProperty>> propertyExpression,
-        bool isRequired, string columnType = null, bool useDateTime2 = false, int? order = null, bool isConcurrencyToken = false)
+        bool isRequired, string columnType = null, int? order = null, bool isConcurrencyToken = false)
         where TEntity : Entity =>
-        builder.SetProperty(propertyExpression, null, isRequired, columnType, useDateTime2, order, isConcurrencyToken);
+        builder.SetProperty(propertyExpression, null, isRequired, columnType, order, isConcurrencyToken);
 
     public static IndexBuilder<TEntity> SetIndex<TEntity>(this EntityTypeBuilder<TEntity> builder, string name, Expression<Func<TEntity, object>> indexExpression, bool isUnique = false, Expression<Func<TEntity, object>> includeExpression = null)
         where TEntity : Entity
