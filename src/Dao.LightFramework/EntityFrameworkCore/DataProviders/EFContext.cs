@@ -6,6 +6,7 @@ using Dao.LightFramework.Domain.Entities;
 using Dao.LightFramework.Domain.Utilities;
 using Dao.LightFramework.EntityFrameworkCore.Utilities;
 using Dao.LightFramework.Services.Contexts;
+using Dao.LightFramework.Traces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.DependencyInjection;
@@ -294,7 +295,7 @@ public class EFContext : DbContext
             sw.Stop();
 
             var sb = new StringBuilder();
-            sb.AppendLine($"SaveChangesAsync: Cost {sw.Format(nextCost)}");
+            sb.AppendLine($"({TraceContext.TraceId.Value}) SaveChangesAsync: Cost {sw.Format(nextCost)}");
             sb.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
             StaticLogger.LogInformation(sb.ToString());
 

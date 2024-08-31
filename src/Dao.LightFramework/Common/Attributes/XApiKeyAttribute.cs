@@ -1,4 +1,5 @@
 ﻿using Dao.LightFramework.Common.Utilities;
+using Dao.LightFramework.Traces;
 using IdentityModel.Client;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -13,6 +14,8 @@ namespace Dao.LightFramework.Common.Attributes;
 public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
 {
     public XApiKeyAttribute(params string[] tokenClaimKeys) => TokenClaimKeys = tokenClaimKeys;
+
+    public bool Disabled { get; set; }
 
     public string HeaderKey { get; set; } = "X-API-KEY";
     public string ParameterKey { get; set; } = "apiKey";
@@ -79,8 +82,8 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
             headers.Authorization = new StringValues("Bearer " + token);
         }
 
-        StaticLogger.LogInformation(@$"XApiKey validation: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}
-Cost: {sw.Stop()}");
+        StaticLogger.LogInformation(@$"({TraceContext.TraceId.Value}) XApiKey validation: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}
+Elapsed: Cost: {sw.Stop()}");
 
         return await next();
     }

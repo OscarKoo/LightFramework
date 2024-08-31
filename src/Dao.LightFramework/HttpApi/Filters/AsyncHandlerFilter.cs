@@ -59,7 +59,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
                 info.ClassName = controllerAction.ControllerName;
                 info.MethodName = controllerAction.ActionName;
 
-                foreach (var filter in GetFilters(controllerAction.MethodInfo).Concat(GetFilters(controllerAction.ControllerTypeInfo)))
+                foreach (var filter in EnumerateFilters(controllerAction.MethodInfo, controllerAction.ControllerTypeInfo))
                 {
                     nextFunc = BuildNext(filter, context, this.serviceProvider, nextFunc);
                     hasFilter = true;
@@ -83,10 +83,30 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         }
     }
 
-    static readonly ConcurrentDictionary<MemberInfo, Lazy<IAsyncActionFilterAttribute[]>> filters = new();
+    static IEnumerable<IAsyncActionFilterAttribute> EnumerateFilters(MemberInfo action, MemberInfo controller)
+    {
+        var key = new Tuple<MemberInfo, MemberInfo>(action, controller);
+        return filters.GetOrAdd(key, k => new Lazy<IAsyncActionFilterAttribute[]>(() =>
+        {
+            var actionFilters = GetFilters(k.Item1);
+            var controllerFilters = GetFilters(k.Item2);
 
-    static IEnumerable<IAsyncActionFilterAttribute> GetFilters(MemberInfo element) =>
-        filters.GetOrAdd(element, k => new Lazy<IAsyncActionFilterAttribute[]>(() => k.GetCustomAttributes(true).OfType<IAsyncActionFilterAttribute>().ToArray())).Value;
+            foreach (var kv in controllerFilters.Where(kv => !actionFilters.ContainsKey(kv.Key)))
+            {
+                actionFilters.Add(kv.Key, kv.Value);
+            }
+
+            return actionFilters.Where(w => !w.Value.Any(a => a.Disabled)).SelectMany(sm => sm.Value).ToArray();
+        })).Value;
+    }
+
+    static readonly ConcurrentDictionary<Tuple<MemberInfo, MemberInfo>, Lazy<IAsyncActionFilterAttribute[]>> filters = new();
+
+    static Dictionary<Type, IAsyncActionFilterAttribute[]> GetFilters(MemberInfo memberInfo) => memberInfo.GetCustomAttributes(true).OfType<IAsyncActionFilterAttribute>().Select(s => new
+    {
+        Type = s.GetType(),
+        Filter = s
+    }).GroupBy(g => g.Type).ToDictionary(k => k.Key, v => v.Select(s => s.Filter).ToArray());
 
     static ActionExecutionDelegate BuildNext(IAsyncActionFilterAttribute filter, ActionExecutingContext context, IServiceProvider serviceProvider, ActionExecutionDelegate next) =>
         async () => await filter.OnActionExecutionAsync(context, serviceProvider, next);
