@@ -300,13 +300,21 @@ public static class Extensions
 
     #region Json
 
-    public static string ToJson(this object source) => source == null ? null : JsonConvert.SerializeObject(source);
+    static readonly JsonSerializerSettings jsonSettingIgnoreNull = new()
+    {
+        ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+        NullValueHandling = NullValueHandling.Ignore,
+    };
+
+    public static string ToJson(this object source, JsonSerializerSettings settings) => source == null ? null : JsonConvert.SerializeObject(source, settings);
+
+    public static string ToJson(this object source, bool ignoreNull = false) => source?.ToJson(ignoreNull ? jsonSettingIgnoreNull : null);
 
     public static T ToObject<T>(this string source) => source == null ? default : JsonConvert.DeserializeObject<T>(source);
 
-    public static T JsonCopy<T>(this object source) => source == null ? default : source.ToJson().ToObject<T>();
+    public static T JsonCopy<T>(this object source) => source == null ? default : source.ToJson(jsonSettingIgnoreNull).ToObject<T>();
 
-    public static dynamic JsonCopy(this object source) => source == null ? default : JsonConvert.DeserializeObject(source.ToJson());
+    public static dynamic JsonCopy(this object source) => source == null ? default : JsonConvert.DeserializeObject(source.ToJson(jsonSettingIgnoreNull));
 
     public static IEnumerable<T> GetValues<T>(this JToken source, string name, StringComparison comparison = StringComparison.Ordinal)
     {

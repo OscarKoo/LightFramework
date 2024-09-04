@@ -83,6 +83,8 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         }
     }
 
+    static readonly ConcurrentDictionary<Tuple<MemberInfo, MemberInfo>, Lazy<IAsyncActionFilterAttribute[]>> filters = new();
+
     static IEnumerable<IAsyncActionFilterAttribute> EnumerateFilters(MemberInfo action, MemberInfo controller)
     {
         var key = new Tuple<MemberInfo, MemberInfo>(action, controller);
@@ -99,8 +101,6 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             return actionFilters.Where(w => !w.Value.Any(a => a.Disabled)).SelectMany(sm => sm.Value).ToArray();
         })).Value;
     }
-
-    static readonly ConcurrentDictionary<Tuple<MemberInfo, MemberInfo>, Lazy<IAsyncActionFilterAttribute[]>> filters = new();
 
     static Dictionary<Type, IAsyncActionFilterAttribute[]> GetFilters(MemberInfo memberInfo) => memberInfo.GetCustomAttributes(true).OfType<IAsyncActionFilterAttribute>().Select(s => new
     {

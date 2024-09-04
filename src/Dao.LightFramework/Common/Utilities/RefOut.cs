@@ -14,5 +14,5 @@ public class RefOut<T>
 
     public static implicit operator RefOut<T>(T value) => new(value);
 
-    public static RefOut<T> Create(T value) => new(value);
+    public static RefOut<T> Create(T value = default) => new(value);
 }
