@@ -312,9 +312,9 @@ public static class Extensions
 
     public static T ToObject<T>(this string source) => source == null ? default : JsonConvert.DeserializeObject<T>(source);
 
-    public static T JsonCopy<T>(this object source) => source == null ? default : source.ToJson(jsonSettingIgnoreNull).ToObject<T>();
+    public static T JsonCopy<T>(this object source, bool ignoreNull = false) => source == null ? default : source.ToJson(ignoreNull).ToObject<T>();
 
-    public static dynamic JsonCopy(this object source) => source == null ? default : JsonConvert.DeserializeObject(source.ToJson(jsonSettingIgnoreNull));
+    public static dynamic JsonCopy(this object source, bool ignoreNull = false) => source == null ? default : JsonConvert.DeserializeObject(source.ToJson(ignoreNull));
 
     public static IEnumerable<T> GetValues<T>(this JToken source, string name, StringComparison comparison = StringComparison.Ordinal)
     {
