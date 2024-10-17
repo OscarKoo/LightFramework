@@ -67,15 +67,25 @@ public class SeriLoggerSetting
                 this.method_routes = method_routes.Select(s =>
                     {
                         var pair = s.Split(":", StringSplitOptions.TrimEntries);
-                        return (pair[0], pair.Length > 1 ? pair[1] : null);
+                        return (pair[0], pair.Length > 1 ? pair[1] : string.Empty);
                     }).GroupBy(g => g.Item1, StringComparer.OrdinalIgnoreCase)
                     .Select(s => (s.Key, new HashSet<string>(s.Select(v => v.Item2), StringComparer.OrdinalIgnoreCase)))
                     .ToDictionary(kv => kv.Key, kv => kv.Item2, StringComparer.OrdinalIgnoreCase);
             }
         }
 
-        public bool IsEnabled(LogEvent logEvent) =>
-            this.method_routes == null || (this.isIncluding == this.method_routes.TryGetValue(RequestContextInfo.Method, out var routes) && routes != null && routes.Contains(RequestContextInfo.Route));
+        public bool IsEnabled(LogEvent logEvent)
+        {
+            var method = RequestContextInfo.Method;
+            var route = RequestContextInfo.Route;
+
+            if (this.method_routes == null || method == null || route == null)
+                return true;
+
+            var allMethods = this.method_routes.GetValueOrDefault(string.Empty);
+            return this.isIncluding == ((this.method_routes.TryGetValue(method, out var routes) && routes != null && (routes.Contains(route) || routes.Contains(string.Empty)))
+                || (allMethods != null && (allMethods.Contains(route) || allMethods.Contains(string.Empty))));
+        }
     }
 }
 

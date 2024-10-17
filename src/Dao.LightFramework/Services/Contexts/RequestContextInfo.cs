@@ -4,7 +4,6 @@ public class RequestContextInfo
 {
     static readonly AsyncLocal<RequestContextInfo> instance = new();
 
-    static RequestContextInfo Get() => instance.Value ?? new RequestContextInfo();
     static RequestContextInfo Set()
     {
         var value = instance.Value;
@@ -23,21 +22,33 @@ public class RequestContextInfo
     string method;
     public static string Method
     {
-        get => Get().method;
+        get
+        {
+            var value = instance.Value;
+            return value?.method;
+        }
         set => Set().method = value;
     }
 
     string route;
     public static string Route
     {
-        get => Get().route;
+        get
+        {
+            var value = instance.Value;
+            return value?.route;
+        }
         set => Set().route = value;
     }
 
     bool noLog;
     public static bool NoLog
     {
-        get => Get().noLog;
+        get
+        {
+            var value = instance.Value;
+            return value?.noLog ?? false;
+        }
         set => Set().noLog = value;
     }
 
