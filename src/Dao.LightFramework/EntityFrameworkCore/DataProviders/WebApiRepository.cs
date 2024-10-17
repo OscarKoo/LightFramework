@@ -62,9 +62,9 @@ public abstract class WebApiRepository : ServiceContextServiceBase, IWebApiRepos
         return (TResult)result;
     }
 
-    protected async Task<TResult> GetAsync<TResult>(string query, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Get, useCache: useCache, headers: headers);
+    protected virtual async Task<TResult> GetAsync<TResult>(string query, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Get, useCache: useCache, headers: headers);
 
-    protected async Task<TResult> PostAsync<TResult>(string query, object body, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Post, body, useCache, headers);
+    protected virtual async Task<TResult> PostAsync<TResult>(string query, object body, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Post, body, useCache, headers);
 
-    protected async Task<TResult> PutAsync<TResult>(string query, object body, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Put, body, useCache, headers);
+    protected virtual async Task<TResult> PutAsync<TResult>(string query, object body, bool useCache = false, IDictionary<string, string> headers = null) => await SendAsync<TResult>(query, HttpMethod.Put, body, useCache, headers);
 }

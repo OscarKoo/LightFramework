@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using Dao.LightFramework.Traces;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -480,4 +481,16 @@ public static class Extensions
     }
 
     #endregion
+
+    public static IEnumerable<string> GetRequestParameter(this ActionExecutingContext context, string headerKey, string queryKey)
+    {
+        if (context == null)
+            return Enumerable.Empty<string>();
+
+        var request = context.HttpContext.Request;
+        return (!string.IsNullOrWhiteSpace(headerKey) ? request.Headers[headerKey] : Enumerable.Empty<string>())
+            .Concat(!string.IsNullOrWhiteSpace(queryKey) ? request.Query[queryKey] : Enumerable.Empty<string>())
+            .Concat(!string.IsNullOrWhiteSpace(queryKey) ? (context.ActionArguments.JsonCopy() as JToken).GetValues<string>(queryKey, StringComparison.OrdinalIgnoreCase) : Enumerable.Empty<string>())
+            .Where(w => !string.IsNullOrWhiteSpace(w));
+    }
 }

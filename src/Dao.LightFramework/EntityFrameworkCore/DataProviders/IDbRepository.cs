@@ -8,7 +8,7 @@ public interface IDbRepository<TEntity> : IRepository
     where TEntity : Entity, new()
 {
     DbSet<TEntity> DbSet { get; }
-    IQueryable<TEntity> DbQuery(bool asNoTracking = false, bool filterSite = true, string site = null);
+    IQueryable<TEntity> DbQuery(bool asNoTracking = false, params string[] sites);
     Task<int> SaveChangesAsync(bool autoSave, bool ignoreRowVersionOnSaving = false);
 
     #region Entity
@@ -17,7 +17,8 @@ public interface IDbRepository<TEntity> : IRepository
     Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys);
     Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys);
     Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys);
-    Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys);
+    Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking, string site, params string[] cacheKeys);
+    Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking, string site, params string[] cacheKeys);
 
     Task<TEntity> SaveAsync(TEntity entity, bool autoSave = false, bool ignoreRowVersionOnSaving = false);
     Task<ICollection<TEntity>> SaveManyAsync(ICollection<TEntity> entities, bool autoSave = false, bool ignoreRowVersionOnSaving = false);

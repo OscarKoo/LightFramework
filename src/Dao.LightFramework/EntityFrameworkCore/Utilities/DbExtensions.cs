@@ -29,12 +29,17 @@ public static class DbExtensions
 
     static readonly ConcurrentDictionary<Type, bool> isDomainSite = new();
 
-    public static IQueryable<TEntity> BySite<TEntity>(this IQueryable<TEntity> source, string site)
+    public static IQueryable<TEntity> BySite<TEntity>(this IQueryable<TEntity> source, params string[] sites)
         where TEntity : class
     {
-        return site != null && isDomainSite.GetOrAdd(typeof(TEntity), k => typeof(IDomainSite).IsAssignableFrom(k))
-            ? source.Where(w => ((IDomainSite)w).Site == site)
-            : source;
+        if (sites == null || sites.Length == 0 || !isDomainSite.GetOrAdd(typeof(TEntity), k => typeof(IDomainSite).IsAssignableFrom(k)))
+            return source;
+
+        if (sites.Length > 1)
+            return source.Where(w => sites.Contains(((IDomainSite)w).Site));
+
+        var site = sites[0];
+        return source.Where(w => ((IDomainSite)w).Site == site);
     }
 
     public static IQueryable<T> ById<T>(this IQueryable<T> query, string id) where T : IId => query.Where(w => w.Id == id);

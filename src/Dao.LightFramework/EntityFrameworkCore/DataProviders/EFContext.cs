@@ -272,8 +272,9 @@ public class EFContext : DbContext
 
         try
         {
-            var sw = new StopWatch();
-            sw.Start();
+            var noLog = RequestContextInfo.NoLog;
+            var sw = noLog ? null : new StopWatch();
+            sw?.Start();
 
             var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var next = BuildSavingEntities(expiredTags, Save);
@@ -292,12 +293,12 @@ public class EFContext : DbContext
             }
 
             this.EntityDtoTracker.MapToDtos();
-            sw.Stop();
+            sw?.Stop();
 
-            var sb = new StringBuilder();
-            sb.AppendLine($"({TraceContext.TraceId.Value}) SaveChangesAsync: Cost {sw.Format(nextCost)}");
-            sb.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
-            StaticLogger.LogInformation(sb.ToString());
+            var sb = noLog ? null : new StringBuilder();
+            sb?.AppendLine($"({TraceContext.TraceId.Value}) SaveChangesAsync: Cost {sw.Format(nextCost)}");
+            sb?.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
+            StaticLogger.LogInformation(sb?.ToString());
 
             return result;
         }

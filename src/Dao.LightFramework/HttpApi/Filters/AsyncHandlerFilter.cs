@@ -33,22 +33,28 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             return result;
         };
 
-        var sb = new StringBuilder();
         var httpContext = context.HttpContext;
+        var request = httpContext.Request;
+
+        RequestContextInfo.Method = request.Method;
+        RequestContextInfo.Route = context.ActionDescriptor.AttributeRouteInfo?.Template;
+        var noLog = context.GetRequestParameter(RequestContextInfo.NoLog_Header, RequestContextInfo.NoLog_Query).FirstOrDefault().ToBool(false);
+        RequestContextInfo.NoLog = noLog;
+
+        var sb = noLog ? null : new StringBuilder();
         try
         {
-            var request = httpContext.Request;
             TraceContext.TraceId.Renew(request);
             TraceContext.SpanId.Renew(request, 1).Degrade();
             TraceContext.ClientId.Renew(request);
             StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} Begin:");
 
-            sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {TraceContext.TraceId.Value}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
+            sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {TraceContext.TraceId.Value}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             var rc = new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>());
             if (!string.IsNullOrWhiteSpace(rc.Token))
                 rc.Token = "[Token]";
-            sb.AppendLine("RequestContext: " + rc.ToJson());
-            sb.AppendLine("Parameter: " + context.ActionArguments.ToJson());
+            sb?.AppendLine("RequestContext: " + rc.ToJson());
+            sb?.AppendLine("Parameter: " + context.ActionArguments.ToJson());
 
             var sw = new StopWatch();
             sw.Start();
@@ -70,14 +76,14 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             sw.Stop();
 
             if (result.Result is ObjectResult obj)
-                sb.AppendLine($"Result: {obj.Value.ToJson()}");
+                sb?.AppendLine($"Result: {obj.Value.ToJson()}");
             if (hasFilter)
-                sb.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - nextCost)}");
-            sb.Append($"Elapsed: Cost {sw.Format(nextCost)}");
+                sb?.AppendLine($"Filters: Cost {sw.Format(sw.TotalNS - nextCost)}");
+            sb?.Append($"Elapsed: Cost {sw.Format(nextCost)}");
         }
         finally
         {
-            if (sb.Length > 0)
+            if (sb?.Length > 0)
                 StaticLogger.LogInformation(sb.ToString());
             StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} End.");
         }

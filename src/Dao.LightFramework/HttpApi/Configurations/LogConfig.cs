@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
 
 namespace Dao.LightFramework.HttpApi.Configurations;
 
@@ -14,6 +15,7 @@ public static class LogConfig
         {
             config.ReadFrom.Services(svc);
             config.ReadFrom.Configuration(ctx.Configuration);
+            config.Filter.With(SeriLoggerSetting.Filters ?? SeriLoggerSetting.DefaultFilters);
         });
         return host;
     }

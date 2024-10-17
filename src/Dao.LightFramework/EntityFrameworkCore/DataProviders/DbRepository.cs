@@ -27,10 +27,18 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
 
     public Microsoft.EntityFrameworkCore.DbSet<TEntity> DbSet => this.dbContext.Set<TEntity>();
 
-    public IQueryable<TEntity> DbQuery(bool asNoTracking = false, bool filterSite = true, string site = null)
+    public IQueryable<TEntity> DbQuery(bool asNoTracking = false, params string[] sites)
     {
         var query = DbSet.AsNoTracking(asNoTracking);
-        if (filterSite) query = query.BySite(site ?? RequestContext.Site);
+        if (sites != null)
+        {
+            if (sites.Length > 0)
+                sites = sites.Where(w => w != null).Select(s => !string.IsNullOrWhiteSpace(s) ? s : RequestContext.Site ?? string.Empty).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if (sites.Length == 0)
+                sites = new[] { RequestContext.Site ?? string.Empty };
+            query = query.BySite(sites);
+        }
+
         return query;
     }
 
@@ -61,11 +69,19 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
     }
 
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
-        await GetListAsync(where, null, asNoTracking, cacheKeys);
+        await GetListAsync(where, null, asNoTracking, string.Empty, cacheKeys);
 
-    public Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys)
+    public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking, string site, params string[] cacheKeys) =>
+        await GetListAsync(where, null, asNoTracking, site, cacheKeys);
+
+    public Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking, string site, params string[] cacheKeys)
     {
-        var query = DbQuery(asNoTracking);
+        var query = DbQuery(asNoTracking,
+            site == null
+                ? null
+                : string.IsNullOrWhiteSpace(site)
+                    ? Array.Empty<string>()
+                    : new[] { site });
         if (where != null)
             query = query.Where(where);
         if (orderBy != null)

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Dao.LightFramework.Common.Exceptions;
+using Dao.LightFramework.Services.Contexts;
 using Dao.LightFramework.Traces;
 
 namespace Dao.LightFramework.Common.Utilities;
@@ -25,17 +26,18 @@ public static class HttpClientExtensions
         var traceId = TraceContext.TraceId.Value;
 
         var url = (client.BaseAddress?.ToString()).JoinUri(query);
-        var sb = new StringBuilder();
-        sb.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {traceId}) MicroService: {method.ToString()} {url}");
+        var noLog = RequestContextInfo.NoLog;
+        var sb = noLog ? null : new StringBuilder();
+        sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {traceId}) MicroService: {method.ToString()} {url}");
 
         var request = new HttpRequestMessage(method, uri);
         if (method != HttpMethod.Get && content != null)
         {
             request.Content = content;
-            sb.AppendLine("Parameter: " + await content.ReadAsStringAsync());
+            sb?.AppendLine("Parameter: " + await content.ReadAsStringAsync());
         }
 
-        request.Headers.RemoveNames(TraceId.Header, SpanId.Header, ClientId.Header);
+        request.Headers.RemoveNames(TraceId.Header, SpanId.Header, ClientId.Header, RequestContextInfo.NoLog_Header);
         if (!string.IsNullOrWhiteSpace(traceId))
             request.Headers.Add(TraceId.Header, traceId);
         if (TraceContext.SpanId.HasValue)
@@ -46,6 +48,8 @@ public static class HttpClientExtensions
         var clientId = TraceContext.ClientId.Value;
         if (!string.IsNullOrWhiteSpace(clientId))
             request.Headers.Add(ClientId.Header, clientId);
+        if (noLog)
+            request.Headers.Add(RequestContextInfo.NoLog_Header, true.ToString());
 
         if (headers != null)
         {
@@ -55,8 +59,8 @@ public static class HttpClientExtensions
             }
         }
 
-        var sw = new StopWatch();
-        sw.Start();
+        var sw = noLog ? null : new StopWatch();
+        sw?.Start();
 
         HttpResponseMessage response = null;
         TResult result = default;
@@ -115,13 +119,13 @@ public static class HttpClientExtensions
         }
         finally
         {
-            sb.AppendLine($"Result: {ReadResultString(result).Coalesce(error)}");
-            sb.Append($"Elapsed: Cost {sw.Stop()}");
+            sb?.AppendLine($"Result: {ReadResultString(result).Coalesce(error)}");
+            sb?.Append($"Elapsed: Cost {sw?.Stop()}");
 
             if (string.IsNullOrWhiteSpace(error))
-                StaticLogger.LogInformation(sb.ToString());
+                StaticLogger.LogInformation(sb?.ToString());
             else
-                StaticLogger.LogError(sb.ToString());
+                StaticLogger.LogError(sb?.ToString());
         }
     }
 
