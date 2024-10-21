@@ -41,17 +41,21 @@ public class RequestContextInfo
         set => Set().route = value;
     }
 
-    bool noLog;
-    public static bool NoLog
+    int noLog;
+    public static int NoLog
     {
         get
         {
             var value = instance.Value;
-            return value?.noLog ?? false;
+            return value?.noLog ?? 0;
         }
         set => Set().noLog = value;
     }
 
+    static readonly int[] logEnabledValues = { 0 };
+    public static bool IsLogEnabled(int value) => logEnabledValues.Contains(value);
+    public static bool LogEnabled => IsLogEnabled(NoLog);
+
     public const string NoLog_Header = "X-No-Log";
-    public const string NoLog_Query = "nolog";
+    public const string NoLog_Query = "noLog";
 }

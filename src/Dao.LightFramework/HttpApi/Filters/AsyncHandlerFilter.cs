@@ -38,10 +38,11 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
         RequestContextInfo.Method = request.Method;
         RequestContextInfo.Route = context.ActionDescriptor.AttributeRouteInfo?.Template;
-        var noLog = context.GetRequestParameter(RequestContextInfo.NoLog_Header, RequestContextInfo.NoLog_Query).FirstOrDefault().ToBool(false);
+        var noLog = context.GetRequestParameter(RequestContextInfo.NoLog_Header, RequestContextInfo.NoLog_Query).FirstOrDefault().ToInt32();
         RequestContextInfo.NoLog = noLog;
+        var logEnabled = RequestContextInfo.IsLogEnabled(noLog);
 
-        var sb = noLog ? null : new StringBuilder();
+        var sb = logEnabled ? new StringBuilder() : null;
         try
         {
             TraceContext.TraceId.Renew(request);
@@ -56,8 +57,8 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             sb?.AppendLine("RequestContext: " + rc.ToJson());
             sb?.AppendLine("Parameter: " + context.ActionArguments.ToJson());
 
-            var sw = new StopWatch();
-            sw.Start();
+            var sw = logEnabled ? new StopWatch() : null;
+            sw?.Start();
 
             if (context.ActionDescriptor is ControllerActionDescriptor controllerAction)
             {
@@ -73,7 +74,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             }
 
             var result = await nextFunc();
-            sw.Stop();
+            sw?.Stop();
 
             if (result.Result is ObjectResult obj)
                 sb?.AppendLine($"Result: {obj.Value.ToJson()}");

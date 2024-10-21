@@ -27,7 +27,8 @@ public static class HttpClientExtensions
 
         var url = (client.BaseAddress?.ToString()).JoinUri(query);
         var noLog = RequestContextInfo.NoLog;
-        var sb = noLog ? null : new StringBuilder();
+        var logEnabled = RequestContextInfo.IsLogEnabled(noLog);
+        var sb = logEnabled ? new StringBuilder() : null;
         sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {traceId}) MicroService: {method.ToString()} {url}");
 
         var request = new HttpRequestMessage(method, uri);
@@ -48,8 +49,8 @@ public static class HttpClientExtensions
         var clientId = TraceContext.ClientId.Value;
         if (!string.IsNullOrWhiteSpace(clientId))
             request.Headers.Add(ClientId.Header, clientId);
-        if (noLog)
-            request.Headers.Add(RequestContextInfo.NoLog_Header, true.ToString());
+        if (noLog != 0)
+            request.Headers.Add(RequestContextInfo.NoLog_Header, noLog.ToString());
 
         if (headers != null)
         {
@@ -59,7 +60,7 @@ public static class HttpClientExtensions
             }
         }
 
-        var sw = noLog ? null : new StopWatch();
+        var sw = logEnabled ? new StopWatch() : null;
         sw?.Start();
 
         HttpResponseMessage response = null;

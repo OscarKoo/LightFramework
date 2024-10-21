@@ -51,7 +51,7 @@ public class SeriLoggerSetting
 
     public class DefaultFilter : ILogEventFilter
     {
-        public bool IsEnabled(LogEvent logEvent) => !RequestContextInfo.NoLog;
+        public bool IsEnabled(LogEvent logEvent) => RequestContextInfo.LogEnabled;
     }
 
     public class MethodRouteFilter : ILogEventFilter

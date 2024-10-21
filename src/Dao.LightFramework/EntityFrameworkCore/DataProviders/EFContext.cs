@@ -272,8 +272,8 @@ public class EFContext : DbContext
 
         try
         {
-            var noLog = RequestContextInfo.NoLog;
-            var sw = noLog ? null : new StopWatch();
+            var logEnabled = RequestContextInfo.LogEnabled;
+            var sw = logEnabled ? new StopWatch() : null;
             sw?.Start();
 
             var expiredTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -295,7 +295,7 @@ public class EFContext : DbContext
             this.EntityDtoTracker.MapToDtos();
             sw?.Stop();
 
-            var sb = noLog ? null : new StringBuilder();
+            var sb = logEnabled ? new StringBuilder() : null;
             sb?.AppendLine($"({TraceContext.TraceId.Value}) SaveChangesAsync: Cost {sw.Format(nextCost)}");
             sb?.Append($"Around SaveChanges: Cost {sw.Format(sw.TotalNS - nextCost)}");
             StaticLogger.LogInformation(sb?.ToString());
