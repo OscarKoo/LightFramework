@@ -175,31 +175,21 @@ public static class Extensions
     }
 
     public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
-        Func<TSource, IServiceProvider, Task<TResult>> actionAsync, IServiceProvider serviceProvider = null, int degree = 0)
-    {
-        return await source.ParallelForEachAsync(async (src, i, svc, ct) => await actionAsync(src, svc), serviceProvider, degree);
-    }
+        Func<TSource, IServiceProvider, Task<TResult>> actionAsync, IServiceProvider serviceProvider = null, int degree = 0) =>
+        await source.ParallelForEachAsync(async (src, i, svc, ct) => await actionAsync(src, svc), serviceProvider, degree);
 
-    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
-        Func<TSource, Task<TResult>> actionAsync, int degree = 0)
-    {
-        return await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
-    }
+    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source, Func<TSource, Task<TResult>> actionAsync, int degree = 0) =>
+        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
 
-    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, IServiceProvider, Task> actionAsync,
-        IServiceProvider serviceProvider = null, int degree = 0)
-    {
+    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, IServiceProvider, Task> actionAsync, IServiceProvider serviceProvider = null, int degree = 0) =>
         await source.ParallelForEachAsync(async (src, svc) =>
         {
             await actionAsync(src, svc);
             return true;
         }, serviceProvider, degree);
-    }
 
-    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, Task> actionAsync, int degree = 0)
-    {
+    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, Task> actionAsync, int degree = 0) =>
         await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
-    }
 
     #endregion
 
@@ -245,18 +235,21 @@ public static class Extensions
     }
 
     public static int ToInt32(this string source) => source.ToInt32(0);
+
     public static int ToInt32(this string source, int defaultValue) =>
         string.IsNullOrWhiteSpace(source) || !int.TryParse(source, out var number)
             ? defaultValue
             : number;
 
     public static long ToLong(this string source) => source.ToLong(0);
+
     public static long ToLong(this string source, long defaultValue) =>
         string.IsNullOrWhiteSpace(source) || !long.TryParse(source, out var number)
             ? defaultValue
             : number;
 
     public static bool ToBool(this string source) => source.ToBool(false);
+
     public static bool ToBool(this string source, bool defaultValue) =>
         string.IsNullOrWhiteSpace(source)
             ? defaultValue
@@ -305,7 +298,7 @@ public static class Extensions
     static readonly JsonSerializerSettings jsonSettingIgnoreNull = new()
     {
         ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-        NullValueHandling = NullValueHandling.Ignore,
+        NullValueHandling = NullValueHandling.Ignore
     };
 
     public static string ToJson(this object source, JsonSerializerSettings settings) => source == null ? null : JsonConvert.SerializeObject(source, settings);
@@ -476,10 +469,7 @@ public static class Extensions
 
     public static bool InIgnoreCase(this string source, params string[] args) => source.In(StringComparer.OrdinalIgnoreCase, args);
 
-    public static T CastTo<T>(this object source)
-    {
-        return (T)source;
-    }
+    public static T CastTo<T>(this object source) => (T)source;
 
     #endregion
 
@@ -513,4 +503,8 @@ public static class Extensions
                 ? onSectionNotExits()
                 : default;
     }
+
+    public static void Await(this Task task) => task?.GetAwaiter().GetResult();
+
+    public static T Await<T>(this Task<T> task) => task == null ? default : task.GetAwaiter().GetResult();
 }
