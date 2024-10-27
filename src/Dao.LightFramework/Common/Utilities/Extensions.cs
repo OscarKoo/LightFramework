@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using Dao.LightFramework.Traces;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -492,5 +493,24 @@ public static class Extensions
             .Concat(!string.IsNullOrWhiteSpace(queryKey) ? request.Query[queryKey] : Enumerable.Empty<string>())
             .Concat(!string.IsNullOrWhiteSpace(queryKey) ? (context.ActionArguments.JsonCopy() as JToken).GetValues<string>(queryKey, StringComparison.OrdinalIgnoreCase) : Enumerable.Empty<string>())
             .Where(w => !string.IsNullOrWhiteSpace(w));
+    }
+
+    public static string GetSectionValue(this IConfiguration configuration, string key)
+    {
+        var section = configuration.GetSection(key);
+        var value = section.Value;
+        return !string.IsNullOrWhiteSpace(value) && section.Exists() ? value : null;
+    }
+
+    public static T GetSectionValue<T>(this IConfiguration configuration, string key, Func<IConfigurationSection, T> onSectionExists, Func<T> onSectionNotExits)
+    {
+        var section = configuration.GetSection(key);
+        return section.Exists()
+            ? onSectionExists != null
+                ? onSectionExists(section)
+                : default
+            : onSectionNotExits != null
+                ? onSectionNotExits()
+                : default;
     }
 }
