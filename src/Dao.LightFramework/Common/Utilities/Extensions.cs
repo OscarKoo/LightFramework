@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using Dao.LightFramework.Traces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -473,16 +474,25 @@ public static class Extensions
 
     #endregion
 
-    public static IEnumerable<string> GetRequestParameter(this ActionExecutingContext context, string headerKey, string queryKey)
+    public static IEnumerable<string> GetRequestParameter(this ActionExecutingContext context, string headerKey, string queryKey, bool searchBody)
     {
         if (context == null)
             return Enumerable.Empty<string>();
 
         var request = context.HttpContext.Request;
-        return (!string.IsNullOrWhiteSpace(headerKey) ? request.Headers[headerKey] : Enumerable.Empty<string>())
-            .Concat(!string.IsNullOrWhiteSpace(queryKey) ? request.Query[queryKey] : Enumerable.Empty<string>())
-            .Concat(!string.IsNullOrWhiteSpace(queryKey) ? (context.ActionArguments.JsonCopy() as JToken).GetValues<string>(queryKey, StringComparison.OrdinalIgnoreCase) : Enumerable.Empty<string>())
-            .Where(w => !string.IsNullOrWhiteSpace(w));
+        var chain = request.GetRequestHeaderParameter(headerKey).Concat(request.GetRequestQueryParameter(queryKey));
+        if (searchBody)
+            chain = chain.Concat(context.GetRequestBodyParameter(queryKey));
+        return chain;
+    }
+
+    public static IEnumerable<string> GetRequestHeaderParameter(this HttpRequest request, string name) => (request != null && !string.IsNullOrWhiteSpace(name) ? request.Headers[name] : Enumerable.Empty<string>()).Where(w => !string.IsNullOrWhiteSpace(w));
+    public static IEnumerable<string> GetRequestQueryParameter(this HttpRequest request, string name) => (request != null && !string.IsNullOrWhiteSpace(name) ? request.Query[name] : Enumerable.Empty<string>()).Where(w => !string.IsNullOrWhiteSpace(w));
+
+    public static IEnumerable<string> GetRequestBodyParameter(this ActionExecutingContext context, string name)
+    {
+        var args = context?.ActionArguments;
+        return (args != null && !string.IsNullOrWhiteSpace(name) ? (args.JsonCopy() as JToken).GetValues<string>(name, StringComparison.OrdinalIgnoreCase) : Enumerable.Empty<string>()).Where(w => !string.IsNullOrWhiteSpace(w));
     }
 
     public static string GetSectionValue(this IConfiguration configuration, string key)

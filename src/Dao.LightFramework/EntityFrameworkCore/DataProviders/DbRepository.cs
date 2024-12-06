@@ -180,7 +180,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         TEntity entity = null;
         if (!string.IsNullOrWhiteSpace(id))
             entity = await GetAsync(id);
-        entity ??= new TEntity();
+        entity ??= new TEntity().SetIsNew<TEntity>(true);
         return dto.Adapt(entity, ignoreNullValue);
     }
 

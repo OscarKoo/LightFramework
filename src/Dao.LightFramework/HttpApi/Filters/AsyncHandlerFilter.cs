@@ -21,6 +21,8 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
+        MicroServiceContext.CreateScopedCache(false);
+
         var hasFilter = false;
         double nextCost = 0;
         ActionExecutionDelegate nextFunc = async () =>
@@ -38,7 +40,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
         RequestContextInfo.Method = request.Method;
         RequestContextInfo.Route = context.ActionDescriptor.AttributeRouteInfo?.Template;
-        var noLog = context.GetRequestParameter(RequestContextInfo.NoLog_Header, RequestContextInfo.NoLog_Query).FirstOrDefault().ToInt32();
+        var noLog = context.GetRequestParameter(RequestContextInfo.NoLog_Header, RequestContextInfo.NoLog_Query, false).FirstOrDefault().ToInt32();
         RequestContextInfo.NoLog = noLog;
         var logEnabled = RequestContextInfo.IsLogEnabled(noLog);
 
@@ -52,6 +54,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
 
             sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {TraceContext.TraceId.Value}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             var rc = new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>());
+            //RequestContextInfo.Context = rc;
             if (!string.IsNullOrWhiteSpace(rc.Token))
                 rc.Token = "[Token]";
             sb?.AppendLine("RequestContext: " + rc.ToJson());

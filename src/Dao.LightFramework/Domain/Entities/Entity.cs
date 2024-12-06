@@ -11,8 +11,17 @@ public abstract class Entity : IId
 {
     public string Id { get; set; }
 
+    bool? isNew;
     [NotMapped, JsonIgnore, Newtonsoft.Json.JsonIgnore, SwaggerIgnore]
-    public bool IsNew => string.IsNullOrWhiteSpace(Id) || (this is IRowVersion rw && rw.RowVersion.IsNullOrEmpty());
+    public bool IsNew => this.isNew ?? (string.IsNullOrWhiteSpace(Id) || (this is IRowVersion rw && rw.RowVersion.IsNullOrEmpty()));
+
+    public void SetIsNew(bool? value) => this.isNew = value;
+    public T SetIsNew<T>(bool? value)
+        where T : Entity
+    {
+        SetIsNew(value);
+        return (T)this;
+    }
 
     [NotMapped, JsonIgnore, Newtonsoft.Json.JsonIgnore, SwaggerIgnore]
     public bool IgnoreRowVersionCheck { get; set; }

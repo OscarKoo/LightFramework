@@ -1,12 +1,10 @@
 ﻿using Dao.LightFramework.Common.Utilities;
 using Dao.LightFramework.Traces;
 using IdentityModel.Client;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
-using Newtonsoft.Json.Linq;
 
 namespace Dao.LightFramework.Common.Attributes;
 
@@ -45,12 +43,7 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
 
         if (!isValid)
         {
-            var query = request.Query;
-            var args = context.ActionArguments.JsonCopy() as JToken;
-
-            var apiKeys = (string.IsNullOrWhiteSpace(HeaderKey) ? Enumerable.Empty<string>() : headers[HeaderKey])
-                .Concat(GetQueryString(ParameterKey, query, args))
-                .Where(w => !string.IsNullOrWhiteSpace(w)).ToList();
+            var apiKeys = context.GetRequestParameter(HeaderKey, ParameterKey, true).ToList();
 
             if (apiKeys.IsNullOrEmpty())
                 throw new UnauthorizedAccessException($"Header \"{HeaderKey}\" or Parameter \"{ParameterKey}\" not provided.");
@@ -69,7 +62,7 @@ public class XApiKeyAttribute : Attribute, IAsyncActionFilterAttribute
             {
                 foreach (var key in TokenClaimKeys)
                 {
-                    var value = GetQueryString(key, query, args).FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
+                    var value = context.GetRequestParameter(null, key, true).FirstOrDefault(w => !string.IsNullOrWhiteSpace(w));
                     if (!string.IsNullOrWhiteSpace(value))
                         parameters.Add(key, value);
                 }
@@ -87,11 +80,6 @@ Elapsed: Cost: {sw.Stop()}");
 
         return await next();
     }
-
-    static IEnumerable<string> GetQueryString(string name, IQueryCollection query, JToken args) =>
-        string.IsNullOrWhiteSpace(name)
-            ? Array.Empty<string>()
-            : query[name].Concat(args.GetValues<string>(name, StringComparison.OrdinalIgnoreCase));
 }
 
 public interface IAuthenticator

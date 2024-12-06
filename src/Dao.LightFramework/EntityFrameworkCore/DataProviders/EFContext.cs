@@ -26,30 +26,14 @@ public static class DbContextSetting
     public static string Collation { get; set; }
 }
 
-internal static class DbContextCurrent
+internal class DbContextCurrent : AsyncLocalProvider<DbContextCurrent>
 {
-    internal class Current
-    {
-        internal IgnoreRowVersionMode IgnoreRowVersionOnSaving { get; set; }
-    }
+    IgnoreRowVersionMode ignoreRowVersionOnSaving;
 
-    static readonly AsyncLocal<Current> current = new();
+    internal static IgnoreRowVersionMode IgnoreRowVersionOnSaving => Get.ignoreRowVersionOnSaving;
 
-    internal static IgnoreRowVersionMode IgnoreRowVersionOnSaving => current.Value?.IgnoreRowVersionOnSaving ?? IgnoreRowVersionMode.None;
-
-    public static void Add(IgnoreRowVersionMode mode)
-    {
-        current.Value ??= new Current();
-        current.Value.IgnoreRowVersionOnSaving |= mode;
-    }
-
-    public static void Remove(IgnoreRowVersionMode mode)
-    {
-        if (current.Value == null)
-            return;
-
-        current.Value.IgnoreRowVersionOnSaving &= ~mode;
-    }
+    public static void Add(IgnoreRowVersionMode mode) => Set.ignoreRowVersionOnSaving |= mode;
+    public static void Remove(IgnoreRowVersionMode mode) => Get.ignoreRowVersionOnSaving &= ~mode;
 }
 
 public class EFContext : DbContext
