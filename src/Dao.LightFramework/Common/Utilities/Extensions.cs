@@ -1,10 +1,8 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
-using Dao.LightFramework.Traces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -129,70 +127,6 @@ public static class Extensions
 
         return result;
     }
-
-    #endregion
-
-    #region Parallel
-
-    public static async Task<T> ScopeAsync<T>(this IServiceProvider source, Func<IServiceProvider, Task<T>> scopeFunc)
-    {
-        if (scopeFunc == null)
-            return default;
-
-        using var scope = source?.CreateScope();
-        return await scopeFunc(scope?.ServiceProvider);
-    }
-
-    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
-        Func<TSource, int, IServiceProvider, CancellationToken, Task<TResult>> actionAsync,
-        IServiceProvider serviceProvider = null, int degree = 0, CancellationToken token = new())
-    {
-        if (source.IsNullOrEmpty())
-            return Array.Empty<TResult>();
-
-        TraceContext.SpanId.Degrade();
-
-        var result = new TResult[source.Count];
-
-        if (source.Count == 1)
-            await ScopeQuery(source.First(), 0, serviceProvider, token);
-        else
-        {
-            var option = new ParallelOptions { CancellationToken = token };
-            if (degree > 0)
-                option.MaxDegreeOfParallelism = degree;
-            else if (ParallelConfig.MaxDegreeOfParallelism > 0)
-                option.MaxDegreeOfParallelism = ParallelConfig.MaxDegreeOfParallelism;
-
-            var list = source.Select((s, i) => new Tuple<TSource, int>(s, i)).ToList();
-            await Parallel.ForEachAsync(list, option, async (t, ct) => await ScopeQuery(t.Item1, t.Item2, serviceProvider, ct));
-        }
-
-        return result;
-
-        async Task ScopeQuery(TSource src, int index, IServiceProvider sp, CancellationToken ct)
-        {
-            TraceContext.SpanId.ContinueRenew();
-            await sp.ScopeAsync(async svc => result[index] = await actionAsync(src, index, svc, ct));
-        }
-    }
-
-    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
-        Func<TSource, IServiceProvider, Task<TResult>> actionAsync, IServiceProvider serviceProvider = null, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, i, svc, ct) => await actionAsync(src, svc), serviceProvider, degree);
-
-    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source, Func<TSource, Task<TResult>> actionAsync, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
-
-    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, IServiceProvider, Task> actionAsync, IServiceProvider serviceProvider = null, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, svc) =>
-        {
-            await actionAsync(src, svc);
-            return true;
-        }, serviceProvider, degree);
-
-    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, Task> actionAsync, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
 
     #endregion
 
@@ -519,9 +453,4 @@ public static class Extensions
     public static void Await(this Task task) => task?.GetAwaiter().GetResult();
 
     public static T Await<T>(this Task<T> task) => task == null ? default : task.GetAwaiter().GetResult();
-}
-
-public class ParallelConfig
-{
-    public static int MaxDegreeOfParallelism { get; set; }
 }
