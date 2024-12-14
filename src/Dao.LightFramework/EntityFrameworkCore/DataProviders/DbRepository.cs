@@ -58,15 +58,22 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
     public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
         await GetAsync(where, null, asNoTracking, cacheKeys);
 
-    public Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys)
+    public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys)
     {
         var query = DbQuery(asNoTracking);
         if (where != null)
             query = query.Where(where);
         if (orderBy != null)
             query = orderBy(query);
-        return query.FirstOrDefaultFromCacheAsync(asNoTracking, cacheKeys);
+        return await query.FirstOrDefaultFromCacheAsync(asNoTracking, cacheKeys);
     }
+
+    public async Task<List<TEntity>> GetListAsync(ICollection<string> ids, bool asNoTracking = false, params string[] cacheKeys) =>
+        ids.IsNullOrEmpty()
+            ? new List<TEntity>()
+            : ids.Count == 1
+                ? new List<TEntity> { await GetAsync(ids.First(), asNoTracking, cacheKeys) }
+                : await GetListAsync(w => ids.Contains(w.Id), asNoTracking, cacheKeys);
 
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
         await GetListAsync(where, null, asNoTracking, string.Empty, cacheKeys);
@@ -74,7 +81,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking, string site, params string[] cacheKeys) =>
         await GetListAsync(where, null, asNoTracking, site, cacheKeys);
 
-    public Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking, string site, params string[] cacheKeys)
+    public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking, string site, params string[] cacheKeys)
     {
         var query = DbQuery(asNoTracking,
             site == null
@@ -86,7 +93,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
             query = query.Where(where);
         if (orderBy != null)
             query = orderBy(query);
-        return query.ToListFromCacheAsync(asNoTracking, cacheKeys);
+        return await query.ToListFromCacheAsync(asNoTracking, cacheKeys);
     }
 
     public async Task<TEntity> SaveAsync(TEntity entity, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
