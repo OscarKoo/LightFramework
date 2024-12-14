@@ -18,11 +18,11 @@ namespace Dao.LightFramework.EntityFrameworkCore.Utilities;
 
 public static class DbExtensions
 {
-    public static async Task ParallelQueryAsync<TIndex, TResult>(this ICollection<ParallelDbQuery<TIndex, TResult>> source, IServiceProvider serviceProvider, int degree = 0)
+    public static async Task ParallelQueryAsync<TIndex, TResult>(this ICollection<ParallelDbQuery<TIndex, TResult>> source, IServiceProvider serviceProvider, int degree = 0, bool? allowNested = null)
     {
         serviceProvider.CheckNull(nameof(serviceProvider));
 
-        await source.ParallelForEachAsync(async (pq, svc) => pq.Result = await pq.QueryAsync(svc), serviceProvider, degree);
+        await source.ParallelForEachAsync(async (pq, svc) => pq.Result = await pq.QueryAsync(svc), serviceProvider, degree, allowNested);
     }
 
     public static IQueryable<TEntity> AsNoTracking<TEntity>(this IQueryable<TEntity> source, bool asNoTracking) where TEntity : class => asNoTracking ? source.AsNoTracking() : source;

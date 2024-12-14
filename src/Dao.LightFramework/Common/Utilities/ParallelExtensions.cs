@@ -16,7 +16,7 @@ public static class ParallelExtensions
 
     public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
         Func<TSource, int, IServiceProvider, CancellationToken, Task<TResult>> actionAsync,
-        IServiceProvider serviceProvider = null, int degree = 0, CancellationToken token = new())
+        IServiceProvider serviceProvider = null, int degree = 0, bool? allowNested = null, CancellationToken token = new())
     {
         if (source.IsNullOrEmpty())
             return Array.Empty<TResult>();
@@ -30,7 +30,7 @@ public static class ParallelExtensions
         else
         {
             var isRoot = false;
-            if (!ParallelConfig.AllowNestedParallelism)
+            if (!(allowNested ?? ParallelConfig.AllowNestedParallelism))
             {
                 var isParalleling = ParallelIndicator.IsParalleling;
                 isRoot = !isParalleling;
@@ -57,10 +57,12 @@ public static class ParallelExtensions
             try
             {
                 var option = new ParallelOptions { CancellationToken = token };
+
+                if (degree <= 0 && ParallelConfig.MaxDegreeOfParallelism > 0)
+                    degree = ParallelConfig.MaxDegreeOfParallelism;
+
                 if (degree > 0)
                     option.MaxDegreeOfParallelism = degree;
-                else if (ParallelConfig.MaxDegreeOfParallelism > 0)
-                    option.MaxDegreeOfParallelism = ParallelConfig.MaxDegreeOfParallelism;
 
                 var list = source.Select((s, i) => new Tuple<TSource, int>(s, i)).ToList();
                 await Parallel.ForEachAsync(list, option, async (t, ct) => await ScopeQuery(serviceProvider, t.Item1, t.Item2, ct));
@@ -85,21 +87,21 @@ public static class ParallelExtensions
     }
 
     public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
-        Func<TSource, IServiceProvider, Task<TResult>> actionAsync, IServiceProvider serviceProvider = null, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, i, svc, ct) => await actionAsync(src, svc), serviceProvider, degree);
+        Func<TSource, IServiceProvider, Task<TResult>> actionAsync, IServiceProvider serviceProvider = null, int degree = 0, bool? allowNested = null) =>
+        await source.ParallelForEachAsync(async (src, i, svc, ct) => await actionAsync(src, svc), serviceProvider, degree, allowNested);
 
-    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source, Func<TSource, Task<TResult>> actionAsync, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
+    public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source, Func<TSource, Task<TResult>> actionAsync, int degree = 0, bool? allowNested = null) =>
+        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree, allowNested);
 
-    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, IServiceProvider, Task> actionAsync, IServiceProvider serviceProvider = null, int degree = 0) =>
+    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, IServiceProvider, Task> actionAsync, IServiceProvider serviceProvider = null, int degree = 0, bool? allowNested = null) =>
         await source.ParallelForEachAsync(async (src, svc) =>
         {
             await actionAsync(src, svc);
             return true;
-        }, serviceProvider, degree);
+        }, serviceProvider, degree, allowNested);
 
-    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, Task> actionAsync, int degree = 0) =>
-        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree);
+    public static async Task ParallelForEachAsync<TSource>(this ICollection<TSource> source, Func<TSource, Task> actionAsync, int degree = 0, bool? allowNested = null) =>
+        await source.ParallelForEachAsync(async (src, svc) => await actionAsync(src), null, degree, allowNested);
 }
 
 public class ParallelConfig
