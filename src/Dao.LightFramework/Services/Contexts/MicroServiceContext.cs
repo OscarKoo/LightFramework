@@ -7,7 +7,7 @@ namespace Dao.LightFramework.Services.Contexts;
 public class MicroServiceContext : AsyncLocalProvider<MicroServiceContext>
 {
     static readonly IndividualLocks<string> cacheLock = new(StringComparer.OrdinalIgnoreCase);
-    readonly ConcurrentDictionary<string, object> cache = new();
+    readonly ConcurrentDictionary<string, object> cache = new(StringComparer.OrdinalIgnoreCase);
 
     public static void CreateScopedCache(bool throwException = true)
     {
