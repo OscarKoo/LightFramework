@@ -45,14 +45,16 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         var logEnabled = RequestContextInfo.IsLogEnabled(noLog);
 
         var sb = logEnabled ? new StringBuilder() : null;
+        string traceId = null;
         try
         {
             TraceContext.TraceId.Renew(request);
+            traceId = TraceContext.TraceId.Value;
             TraceContext.SpanId.Renew(request, 1).Degrade();
             TraceContext.ClientId.Renew(request);
-            StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} Begin:");
+            StaticLogger.LogInformation($"TraceId: {traceId}, ConnectionId: {httpContext.Connection.Id} Begin:");
 
-            sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {TraceContext.TraceId.Value}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
+            sb?.AppendLine($"({traceId}, {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             var rc = new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>());
             //RequestContextInfo.Context = rc;
             if (!string.IsNullOrWhiteSpace(rc.Token))
@@ -89,7 +91,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
         {
             if (sb?.Length > 0)
                 StaticLogger.LogInformation(sb.ToString());
-            StaticLogger.LogInformation($"TraceId: {TraceContext.TraceId.Value}, ConnectionId: {httpContext.Connection.Id} End.");
+            StaticLogger.LogInformation($"TraceId: {traceId}, ConnectionId: {httpContext.Connection.Id} End.");
         }
     }
 
