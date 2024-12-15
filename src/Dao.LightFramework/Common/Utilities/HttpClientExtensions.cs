@@ -29,7 +29,7 @@ public static class HttpClientExtensions
         var noLog = RequestContextInfo.NoLog;
         var logEnabled = RequestContextInfo.IsLogEnabled(noLog);
         var sb = logEnabled ? new StringBuilder() : null;
-        sb?.AppendLine($"({traceId}, {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) MicroService: {method.ToString()} {url}");
+        sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {traceId}) MicroService: {method.ToString()} {url}");
 
         var request = new HttpRequestMessage(method, uri);
         if (method != HttpMethod.Get && content != null)

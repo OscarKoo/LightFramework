@@ -54,7 +54,7 @@ public class AsyncHandlerFilter : IAsyncActionFilter
             TraceContext.ClientId.Renew(request);
             StaticLogger.LogInformation($"TraceId: {traceId}, ConnectionId: {httpContext.Connection.Id} Begin:");
 
-            sb?.AppendLine($"({traceId}, {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
+            sb?.AppendLine($"({DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}, {traceId}) Request: {request.Method} {request.Scheme}://{request.Host}{request.Path}{request.QueryString.Value}");
             var rc = new RequestContext(this.serviceProvider.GetService<IHttpContextAccessor>());
             //RequestContextInfo.Context = rc;
             if (!string.IsNullOrWhiteSpace(rc.Token))
