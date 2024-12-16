@@ -249,7 +249,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
 
     public async Task<int> Merge(Expression<Func<TEntity, bool>> where, IEnumerable<TEntity> source, Expression<Func<TEntity, TEntity>> insert = null, Expression<Func<TEntity, TEntity, TEntity>> update = null, Expression<Func<TEntity, TEntity, bool>> updateAnd = null, bool useDelete = true, Expression<Func<TEntity, TEntity>> delete = null, string site = "")
     {
-        var merge = DbQuery(true).Where(where).AsCte().Merge().Using(source).OnTargetKey();
+        var merge = DbQuery(true, site).Where(where).AsCte().Merge().Using(source).OnTargetKey();
 
         if (insert != null)
             merge = merge.InsertWhenNotMatched(insert);
