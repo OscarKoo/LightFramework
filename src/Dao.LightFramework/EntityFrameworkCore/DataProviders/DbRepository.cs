@@ -110,6 +110,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         //}
 
         await SaveChangesAsync(autoSave, ignoreRowVersionOnSaving);
+        entity.SetIsNew(null);
         return entity;
     }
 
@@ -131,6 +132,10 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         //    DbSet.UpdateRange(update);
 
         await SaveChangesAsync(autoSave, ignoreRowVersionOnSaving);
+        foreach (var entity in entities)
+        {
+            entity.SetIsNew(null);
+        }
         return entities;
     }
 
@@ -186,7 +191,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
     {
         TEntity entity = null;
         if (!string.IsNullOrWhiteSpace(id))
-            entity = await GetAsync(id);
+            entity = (await GetAsync(id))?.SetIsNew<TEntity>(false);
         entity ??= new TEntity().SetIsNew<TEntity>(true);
         return dto.Adapt(entity, ignoreNullValue);
     }
@@ -227,7 +232,9 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         var entity = await RetrieveAsync(dto.Id, dto, ignoreNullValue);
         if (entity.IsNew)
             throw new DataHasChangedException(Lang.Get("数据已被其他用户删除. ({0}: {1})", typeof(TDto).Name, dto.Id), null, dto);
-        return await DeleteAsync(entity, autoSave, ignoreRowVersionOnSaving);
+        var result = await DeleteAsync(entity, autoSave, ignoreRowVersionOnSaving);
+        entity.SetIsNew(null);
+        return result;
     }
 
     public async Task<int> DeleteManyDtoAsync<TDto>(ICollection<TDto> dtos, bool autoSave = false, bool ignoreNullValue = true, bool ignoreRowVersionOnSaving = false) where TDto : IId
@@ -236,7 +243,9 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
             return 0;
 
         var entities = await dtos.SelectAsync(async dto => await RetrieveAsync(dto.Id, dto, ignoreNullValue));
-        return await DeleteManyAsync(entities, autoSave);
+        var result = await DeleteManyAsync(entities, autoSave);
+        entities.ForEach(e => e.SetIsNew(null));
+        return result;
     }
 
     #endregion
