@@ -32,8 +32,10 @@ public static class DbExtensions
     public static IQueryable<TEntity> BySite<TEntity>(this IQueryable<TEntity> source, params string[] sites)
         where TEntity : class
     {
-        if (sites == null || sites.Length == 0 || !isDomainSite.GetOrAdd(typeof(TEntity), k => typeof(IDomainSite).IsAssignableFrom(k)))
+        if (sites == null || sites.Length == 0 || sites.All(w => w == null) || !isDomainSite.GetOrAdd(typeof(TEntity), k => typeof(IDomainSite).IsAssignableFrom(k)))
             return source;
+
+        sites = sites.Where(w => w != null).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
         if (sites.Length > 1)
             return source.Where(w => sites.Contains(((IDomainSite)w).Site));
@@ -57,7 +59,7 @@ public static class DbExtensions
         if (rowVersion == null)
             return true;
 
-        var entity = await repo.DbQuery(true).Where(w => w.Id == id).Select(s => new EntityRowVersion
+        var entity = await repo.DbQuery(true, null).Where(w => w.Id == id).Select(s => new EntityRowVersion
         {
             Id = s.Id,
             RowVersion = s.RowVersion

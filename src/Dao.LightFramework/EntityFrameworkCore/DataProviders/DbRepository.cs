@@ -30,12 +30,11 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
     public IQueryable<TEntity> DbQuery(bool asNoTracking = false, params string[] sites)
     {
         var query = DbSet.AsNoTracking(asNoTracking);
-        if (sites != null)
+        if (sites != null && (sites.Length <= 0 || sites.Any(a => a != null)))
         {
-            if (sites.Length > 0)
-                sites = sites.Where(w => w != null).Select(s => !string.IsNullOrWhiteSpace(s) ? s : RequestContext.Site ?? string.Empty).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            if (sites.Length == 0)
-                sites = new[] { RequestContext.Site ?? string.Empty };
+            sites = sites.Length > 0
+                ? sites.Where(w => w != null).Select(s => !string.IsNullOrWhiteSpace(s) ? s : RequestContext.Site ?? string.Empty).ToArray()
+                : new[] { RequestContext.Site ?? string.Empty };
             query = query.BySite(sites);
         }
 
@@ -56,11 +55,14 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         string.IsNullOrWhiteSpace(id) ? default : await GetAsync(w => w.Id == id, asNoTracking, cacheKeys);
 
     public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
-        await GetAsync(where, null, asNoTracking, cacheKeys);
+        await GetAsync(where, asNoTracking, string.Empty, cacheKeys);
 
-    public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking = false, params string[] cacheKeys)
+    public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking, string site, params string[] cacheKeys) =>
+        await GetAsync(where, null, asNoTracking, site, cacheKeys);
+
+    public async Task<TEntity> GetAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking, string site, params string[] cacheKeys)
     {
-        var query = DbQuery(asNoTracking);
+        var query = DbQuery(asNoTracking, site);
         if (where != null)
             query = query.Where(where);
         if (orderBy != null)
@@ -76,19 +78,14 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
                 : await GetListAsync(w => ids.Contains(w.Id), asNoTracking, cacheKeys);
 
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking = false, params string[] cacheKeys) =>
-        await GetListAsync(where, null, asNoTracking, string.Empty, cacheKeys);
+        await GetListAsync(where, asNoTracking, string.Empty, cacheKeys);
 
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, bool asNoTracking, string site, params string[] cacheKeys) =>
         await GetListAsync(where, null, asNoTracking, site, cacheKeys);
 
     public async Task<List<TEntity>> GetListAsync(Expression<Func<TEntity, bool>> where, Func<IQueryable<TEntity>, IQueryable<TEntity>> orderBy, bool asNoTracking, string site, params string[] cacheKeys)
     {
-        var query = DbQuery(asNoTracking,
-            site == null
-                ? null
-                : string.IsNullOrWhiteSpace(site)
-                    ? Array.Empty<string>()
-                    : new[] { site });
+        var query = DbQuery(asNoTracking, site);
         if (where != null)
             query = query.Where(where);
         if (orderBy != null)
@@ -173,9 +170,9 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
         return entities.Count;
     }
 
-    public async Task<int> DeleteAsync(Expression<Func<TEntity, bool>> where, bool autoSave = false, bool ignoreRowVersionOnSaving = false)
+    public async Task<int> DeleteAsync(Expression<Func<TEntity, bool>> where, bool autoSave = false, string site = "", bool ignoreRowVersionOnSaving = false)
     {
-        var query = DbQuery();
+        var query = DbQuery(sites: site);
         if (where != null)
             query = query.Where(where);
         var list = await query.ToListAsync();
@@ -250,7 +247,7 @@ public class DbRepository<TEntity> : ServiceContextServiceBase, IDbRepository<TE
 
     #endregion
 
-    public async Task<int> Merge(Expression<Func<TEntity, bool>> where, IEnumerable<TEntity> source, Expression<Func<TEntity, TEntity>> insert = null, Expression<Func<TEntity, TEntity, TEntity>> update = null, Expression<Func<TEntity, TEntity, bool>> updateAnd = null, bool useDelete = true, Expression<Func<TEntity, TEntity>> delete = null)
+    public async Task<int> Merge(Expression<Func<TEntity, bool>> where, IEnumerable<TEntity> source, Expression<Func<TEntity, TEntity>> insert = null, Expression<Func<TEntity, TEntity, TEntity>> update = null, Expression<Func<TEntity, TEntity, bool>> updateAnd = null, bool useDelete = true, Expression<Func<TEntity, TEntity>> delete = null, string site = "")
     {
         var merge = DbQuery(true).Where(where).AsCte().Merge().Using(source).OnTargetKey();
 
@@ -280,12 +277,12 @@ public class LockedDbRepository<TEntity> : DbRepository<TEntity>, ILockedDbRepos
 
     protected static readonly IndividualLocks<string> locks = new(StringComparer.OrdinalIgnoreCase);
 
-    public async Task<TEntity> GetOrCreateAsync(string key, Expression<Func<TEntity, bool>> where,
+    public async Task<TEntity> GetOrCreateAsync(string key, string site, Expression<Func<TEntity, bool>> where,
         Func<TEntity> createEntity, Func<Microsoft.EntityFrameworkCore.DbContext, TEntity, Task> onCreating = null,
         Func<TEntity, bool> requireUpdate = null, Func<Microsoft.EntityFrameworkCore.DbContext, TEntity, Task<bool>> onUpdating = null,
         bool asNoTracking = false, params string[] cacheKeys)
     {
-        var query = DbQuery(asNoTracking).Where(where);
+        var query = DbQuery(asNoTracking, site).Where(where);
         var entity = await query.FirstOrDefaultFromCacheAsync(asNoTracking, cacheKeys);
         if (entity != null && (requireUpdate == null || onUpdating == null || !requireUpdate(entity)))
             return entity;
@@ -327,4 +324,10 @@ public class LockedDbRepository<TEntity> : DbRepository<TEntity>, ILockedDbRepos
             return entity;
         }
     }
+
+    public async Task<TEntity> GetOrCreateAsync(string key, Expression<Func<TEntity, bool>> where,
+        Func<TEntity> createEntity, Func<Microsoft.EntityFrameworkCore.DbContext, TEntity, Task> onCreating = null,
+        Func<TEntity, bool> requireUpdate = null, Func<Microsoft.EntityFrameworkCore.DbContext, TEntity, Task<bool>> onUpdating = null,
+        bool asNoTracking = false, params string[] cacheKeys) =>
+        await GetOrCreateAsync(key, string.Empty, where, createEntity, onCreating, requireUpdate, onUpdating, asNoTracking, cacheKeys);
 }
