@@ -29,6 +29,15 @@ public static class ParallelExtensions
             await ScopeQuery(serviceProvider, source.First(), 0, token);
         else
         {
+            if (degree <= 0 && ParallelConfig.MaxDegreeOfParallelism > 0)
+                degree = ParallelConfig.MaxDegreeOfParallelism;
+
+            if (degree == 1)
+            {
+                await ForEachAction();
+                return result;
+            }
+
             var isRoot = false;
             if (!(allowNested ?? ParallelConfig.AllowNestedParallelism))
             {
@@ -36,17 +45,7 @@ public static class ParallelExtensions
                 isRoot = !isParalleling;
                 if (isParalleling)
                 {
-                    var index = 0;
-                    foreach (var src in source)
-                    {
-                        if (index == 0)
-                            TraceContext.SpanId.ContinueRenew();
-                        else
-                            TraceContext.SpanId.Continue();
-                        await ScopeAction(serviceProvider, src, index, token);
-                        index++;
-                    }
-
+                    await ForEachAction();
                     return result;
                 }
             }
@@ -57,9 +56,6 @@ public static class ParallelExtensions
             try
             {
                 var option = new ParallelOptions { CancellationToken = token };
-
-                if (degree <= 0 && ParallelConfig.MaxDegreeOfParallelism > 0)
-                    degree = ParallelConfig.MaxDegreeOfParallelism;
 
                 if (degree > 0)
                     option.MaxDegreeOfParallelism = degree;
@@ -84,6 +80,20 @@ public static class ParallelExtensions
 
         async Task ScopeAction(IServiceProvider sp, TSource src, int index, CancellationToken ct) =>
             await sp.ScopeAsync(async svc => result[index] = await actionAsync(src, index, svc, ct));
+
+        async Task ForEachAction()
+        {
+            var index = 0;
+            foreach (var src in source)
+            {
+                if (index == 0)
+                    TraceContext.SpanId.ContinueRenew();
+                else
+                    TraceContext.SpanId.Continue();
+                await ScopeAction(serviceProvider, src, index, token);
+                index++;
+            }
+        }
     }
 
     public static async Task<ICollection<TResult>> ParallelForEachAsync<TSource, TResult>(this ICollection<TSource> source,
