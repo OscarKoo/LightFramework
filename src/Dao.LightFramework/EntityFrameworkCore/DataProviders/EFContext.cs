@@ -196,8 +196,6 @@ public class EFContext : DbContext
             next = BuildSavingSpecificEntity(entry, next);
             next = BuildSavingAnyEntity(entry, next);
 
-            if (!QueryCacheManager.IsEnabled)
-                continue;
             var cacheKeys = ((Entity)entry.Entity).CacheKeys;
             if (cacheKeys.IsNullOrEmpty())
                 continue;
