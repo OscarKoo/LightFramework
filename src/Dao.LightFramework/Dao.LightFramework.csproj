@@ -10,7 +10,7 @@
     <PackageProjectUrl>https://github.com/OscarKoo/LightFramework</PackageProjectUrl>
     <PackageIconUrl>https://raw.githubusercontent.com/OscarKoo/LightFramework/master/favicon.ico</PackageIconUrl>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.1.1.1</Version>
+    <Version>1.1.2</Version>
   </PropertyGroup>
 
     <ItemGroup>

@@ -1,4 +1,5 @@
 ﻿using System.Transactions;
+using Z.EntityFramework.Plus;
 
 namespace Dao.LightFramework.Common.Utilities;
 
@@ -6,23 +7,29 @@ public static class TransactionHelper
 {
     public static TransactionScope Create(
         TransactionScopeOption scopeOption = TransactionScopeOption.Required,
-        TransactionScopeAsyncFlowOption asyncFlowOption = TransactionScopeAsyncFlowOption.Suppress) =>
-        new(scopeOption, new TransactionOptions
+        TransactionScopeAsyncFlowOption asyncFlowOption = TransactionScopeAsyncFlowOption.Suppress)
+    {
+        TransactionQueryCacheTags.Initialize();
+        return new TransactionScope(scopeOption, new TransactionOptions
         {
             IsolationLevel = IsolationLevel.ReadCommitted,
             Timeout = TransactionManager.MaximumTimeout
         }, asyncFlowOption);
+    }
 
     #region sync
 
     public static T Scope<T>(Func<bool> requireTransaction, Func<T> func, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
-        if (func == null)
-            throw new ArgumentNullException(nameof(func));
+        ArgumentNullException.ThrowIfNull(func);
 
-        using var scope = requireTransaction == null || requireTransaction() ? Create(scopeOption) : null;
-        var result = func();
-        scope?.Complete();
+        T result;
+        using (var scope = requireTransaction == null || requireTransaction() ? Create(scopeOption) : null)
+        {
+            result = func();
+            scope?.Complete();
+        }
+        TransactionQueryCacheTags.ExpireTags();
         return result;
     }
 
@@ -30,8 +37,7 @@ public static class TransactionHelper
 
     public static void Scope(Func<bool> requireTransaction, Action action, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
-        if (action == null)
-            throw new ArgumentNullException(nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
 
         Scope(requireTransaction, () =>
         {
@@ -48,12 +54,15 @@ public static class TransactionHelper
 
     public static async Task<T> ScopeAsync<T>(Func<bool> requireTransaction, Func<Task<T>> funcAsync, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
-        if (funcAsync == null)
-            throw new ArgumentNullException(nameof(funcAsync));
+        ArgumentNullException.ThrowIfNull(funcAsync);
 
-        using var scope = requireTransaction == null || requireTransaction() ? Create(scopeOption, TransactionScopeAsyncFlowOption.Enabled) : null;
-        var result = await funcAsync();
-        scope?.Complete();
+        T result;
+        using (var scope = requireTransaction == null || requireTransaction() ? Create(scopeOption, TransactionScopeAsyncFlowOption.Enabled) : null)
+        {
+            result = await funcAsync();
+            scope?.Complete();
+        }
+        TransactionQueryCacheTags.ExpireTags();
         return result;
     }
 
@@ -61,8 +70,7 @@ public static class TransactionHelper
 
     public static async Task ScopeAsync(Func<bool> requireTransaction, Func<Task> actionAsync, TransactionScopeOption scopeOption = TransactionScopeOption.Required)
     {
-        if (actionAsync == null)
-            throw new ArgumentNullException(nameof(actionAsync));
+        ArgumentNullException.ThrowIfNull(actionAsync);
 
         await ScopeAsync(requireTransaction, async () =>
         {
@@ -74,4 +82,41 @@ public static class TransactionHelper
     public static async Task ScopeAsync(Func<Task> actionAsync, TransactionScopeOption scopeOption = TransactionScopeOption.Required) => await ScopeAsync(null, actionAsync, scopeOption);
 
     #endregion
+}
+
+public class TransactionQueryCacheTags : AsyncLocalProvider<TransactionQueryCacheTags>
+{
+    ISet<string> cacheTags;
+
+    public static void Initialize() => Set.cacheTags ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    public static void Add(params string[] tags)
+    {
+        if (tags is not { Length: > 0 })
+            return;
+
+        Add((IEnumerable<string>)tags);
+    }
+
+    public static void Add(IEnumerable<string> tags)
+    {
+        var cache = Value?.cacheTags;
+        if (cache == null)
+            return;
+
+        foreach (var tag in tags)
+            cache.Add(tag);
+    }
+
+    public static void ExpireTags()
+    {
+        var cache = Value?.cacheTags;
+        if (cache is not { Count: > 0 })
+            return;
+
+        foreach (var tag in cache)
+        {
+            QueryCacheManager.ExpireTag(tag);
+        }
+    }
 }

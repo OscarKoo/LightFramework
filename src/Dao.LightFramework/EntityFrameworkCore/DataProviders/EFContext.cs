@@ -272,7 +272,7 @@ public class EFContext : DbContext
                 {
                     QueryCacheManager.ExpireTag(tag);
                 }
-
+                TransactionQueryCacheTags.Add(expiredTags);
                 expiredTags.Clear();
             }
 
