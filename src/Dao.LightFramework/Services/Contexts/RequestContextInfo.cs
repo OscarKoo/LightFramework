@@ -36,10 +36,10 @@ public class RequestContextInfo : AsyncLocalProvider<RequestContextInfo>
 
     #endregion
 
-    //IRequestContext context;
-    //public static IRequestContext Context
-    //{
-    //    get => Get?.context;
-    //    set => Set.context = value;
-    //}
+    IRequestContext context;
+    public static IRequestContext Context
+    {
+        get => Value?.context;
+        set => Set.context = value;
+    }
 }

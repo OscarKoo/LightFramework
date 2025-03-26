@@ -26,6 +26,20 @@ public class RequestContext : IRequestContext
 
     void Initialize(IHttpContextAccessor accessor)
     {
+        var ctx = RequestContextInfo.Context;
+        if (ctx != null)
+        {
+            Domain = ctx.Domain;
+            Site = ctx.Site;
+            UserId = ctx.UserId;
+            User = ctx.User;
+            Operator = ctx.Operator;
+            Language = ctx.Language;
+            Token = ctx.Token;
+            RequestContextInfo.Context = this;
+            return;
+        }
+
         var context = accessor?.HttpContext;
         if (context == null)
             return;
